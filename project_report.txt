@@ -2,54 +2,66 @@ CSCB58 Project Report: Winter 2019
 
 Team Member A
 -------------
-First Name: 
-Last Name:
-Student Number:
-UofT E-mail Address:
+First Name: William
+Last Name: Song
+Student Number: 1004152070
+UofT E-mail Address: willy.song@mail.utoronto.ca
 
 
 Team Member B
 -------------
-First Name: 
-Last Name:
-Student Number:
-UofT E-mail Address:
+First Name: Abhivyakti
+Last Name: Ahuja
+Student Number: 1004599696
+UofT E-mail Address: abhivyakti.ahuja@mail.utoronto.ca
 
 Team Member C (Optional)
 -------------
-First Name: 
-Last Name:
-Student Number:
-UofT E-mail Address:
+First Name: Rebecca
+Last Name: Reid
+Student Number: 1003429587
+UofT E-mail Address: rebecca.reid@mail.utoronto.ca
 
 Team Member D (Optional)
 -------------
-First Name: 
-Last Name:
-Student Number:
-UofT E-mail Address:
+First Name: Guikang
+Last Name: Zhong
+Student Number: 1004304807
+UofT E-mail Address: guikang.zhong@mail.utoronto.ca
 
 
 Project Plan
 --------
 
-Project Title: 
-
+Project Title:
+Asteroids
 
 Provide a one paragraph description of your project:
-
+Re-create the classic cabinet arcade game Asteroids. In Asteroids, the player controls a ship that starts in the middle of the screen. Around them are asteroids that move across the screen along a linear path. If the player collides with one of these asteroids, they lose their ship and the game. The player has the capability to turn their ship, move it around the screen, and from the ship to destroy asteroids.
 
 What is your plan for the first week?
+Working display
+Create Player
+	Sprite (maybe?)
+	Orientation based on direction of joystick
+		Joystick noise reducer (we might be able to get the code off somewhere)
+	Shooting based on button press
+	
 
 
 What is your plan for the second week?
+Create Asteroids
+	Sprite (at least 2x2 box)
+	Interaction with getting shot
 
 
 What is your plan for the third week?
+Player movement
+	Direction based on direction of second joystick
 
 
 What is your backup plan if things don’t work out as planned?
-
+Features are ordered in necessity, player movement will be removed if necessary
 
 
 Weekly Reports
