@@ -304,18 +304,79 @@ module Project(
 	  input CLOCK_50,                             //    On Board 50 MHz
 	  input [0:0] KEY,                            // Reset key
 	  output [6:0] HEX0
-		);
+		CLOCK_50,						//	On Board 50 MHz
+		// The ports below are for the VGA output.  Do not change.
+		VGA_CLK,   						//	VGA Clock
+		VGA_HS,							//	VGA H_SYNC
+		VGA_VS,							//	VGA V_SYNC
+		VGA_BLANK_N,						//	VGA BLANK
+		VGA_SYNC_N,						//	VGA SYNC
+		VGA_R,   						//	VGA Red[9:0]
+		VGA_G,	 						//	VGA Green[9:0]
+		VGA_B   						//	VGA Blue[9:0]
+	);
+
+	input		CLOCK_50;				//	50 MHz
+
+
+	// Do not change the following outputs
+	output			VGA_CLK;   				//	VGA Clock
+	output			VGA_HS;					//	VGA H_SYNC
+	output			VGA_VS;					//	VGA V_SYNC
+	output			VGA_BLANK_N;				//	VGA BLANK
+	output			VGA_SYNC_N;				//	VGA SYNC
+	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
+	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
+	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
+
+
+	// Create the colour, x, y and writeEn wires that are inputs to the controller.
+	wire [2:0] colour;
+	wire [7:0] x;
+	wire [6:0] y;
+	wire writeEn;
+	wire [3:0] count;
+	wire resetn;
+	wire [1:0] direction;
+	assign colour = 3'b111;
+	assign resetn = KEY[0];
+
+	// Create an Instance of a VGA controller - there can be only one!
+	// Define the number of colours as well as the initial background
+	// image file (.MIF) for the controller.
+	vga_adapter VGA(
+			.resetn(resetn),
+			.clock(CLOCK_50),
+			.colour(colour),
+			.x(x),
+			.y(y),
+			.plot(writeEn),
+			/* Signals for the DAC to drive tyhe monitor. */
+			.VGA_R(VGA_R),
+			.VGA_G(VGA_G),
+			.VGA_B(VGA_B),
+			.VGA_HS(VGA_HS),
+			.VGA_VS(VGA_VS),
+			.VGA_BLANK(VGA_BLANK_N),
+			.VGA_SYNC(VGA_SYNC_N),
+			.VGA_CLK(VGA_CLK));
+			
+		defparam VGA.RESOLUTION = "160x120";
+		defparam VGA.MONOCHROME = "FALSE";
+		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
+		defparam VGA.BACKGROUND_IMAGE = "black.mif";	
+			
+				
+						
 	wire [3:0] ship_control;
-   wire [7:0] kb_scan_code;
+   	wire [7:0] kb_scan_code;
 	wire kb_sc_ready, kb_letter_case;
+	
 	key2ascii SC2A (
 		.ship_control(ship_control),
 		.scan_code(kb_scan_code),
 		.letter_case(kb_letter_case)
 	);
-	
-	wire resetn;
-	assign resetn = KEY[0];
 	keyboard kd (
 		.clk(CLOCK_50),
 		.reset(~resetn),
@@ -325,9 +386,35 @@ module Project(
 		.scan_code_ready(kb_sc_ready),
 		.letter_case_out(kb_letter_case)
 	);
-	
-	
 	hex_display_direction(ship_control, HEX0);
+	counter(CLOCK_50, count);
+	// control the spaceship
+	wire [1:0] direction;
+	wire Enable;
+	spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
+	clock_divider(CLOCK_50, resetn, Enable);
+endmodule
+
+module spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
+	input [3:0] ship_control;
+	input [3:0] count;
+	input CLOCK_50;
+	input [7:0] x;
+	input [6:0] y;
+	output writeEn;
+	output count;
+	output reg [1:0] direction;
+	always @(posedge CLOCK_50)
+	begin
+		case(ship_control[3:0])
+			4'b0001: drawLeft(CLOCK_50, count, x, y, writeEn, direction);	// a
+			4'b0010: drawRight(CLOCK_50, count, x, y, writeEn, direction); // d
+			4'b0011: drawDown(CLOCK_50, count, x, y, writeEn, direction);	// s
+			4'b0100: drawUp(CLOCK_50, count, x, y, writeEn, direction); // w
+			4'b0101: shoot(Enable, direction, x, y); // space
+		endcase
+	end
+	
 endmodule
 
 module hex_display_direction(IN, OUT);
