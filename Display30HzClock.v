@@ -22,27 +22,26 @@ module countto30(out, clock);
 
 	always@ (posedge clock)     // triggered every time clock rises
 	begin
-		if(out == 4'd30)    // ...otherwise if q is the maximum counter value
+		if(out == 5'd29)    // ...otherwise if q is the maximum counter value
 			out <= 0;                 // reset q to 0
 		else  // ...otherwise update q (only when Enable is 1)
 			out <= out + 1'b1;          // increment q
 	end
 endmodule
 
-module Display30HzClock(HEX0, HEX1, LEDR, CLOCK_50);
-	output [7:0] HEX0;
-	output [7:0] HEX1;
+module Display30HzClock(HEX6, HEX7, LEDR, CLOCK_50);
+	output [7:0] HEX6;
+	output [7:0] HEX7;
 	output [17:0] LEDR;
 	input CLOCK_50;
-	wire [4:0] out;
+	wire [5:0] out;
 	wire clock;
 	
-	assign LEDR[4:0] = out[4:0];
 	countto30(out, clock);
 	clock30Hz(clock, CLOCK_50);
 	
-	hex_display(HEX0, out[3:0]);
-	hex_display(HEX1, out[4]);
+	hex_display(HEX6, out[3:0]);
+	hex_display(HEX7, 4'b0000 + out[5:4]);
 endmodule
 
 module hex_display(OUT, IN);
