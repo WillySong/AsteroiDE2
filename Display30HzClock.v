@@ -3,13 +3,13 @@
 module clock30Hz(out, clock);
 	output out;
 	input clock;
-	reg [27:0] q;                // declare q
+	reg [22:0] q;                // declare q
 
 	always@(posedge clock)     // triggered every time clock rises
 	begin
 		if(q == 21'b1_1001_0110_1110_0110_1010)    // reset at 30hz
 			q <= 0;                 // reset q to 0
-		else  // ...otherwise update q (only when Enable is 1)
+		else 
 			q <= q + 1'b1;          // increment q
 	end
 	
