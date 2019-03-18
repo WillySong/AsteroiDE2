@@ -93,7 +93,7 @@ module drawUp(clk, count, x, y, writeEn, direction);
 		end
 endmodule
 
-module drawDown(clk, count, x, ywriteEn, direction);
+module drawDown(clk, count, x, y, writeEn, direction);
      input [3:0] count;
 	 input clk;
 	 output reg [7:0] x;
@@ -258,40 +258,7 @@ module drawRight(clk, count, x, y, writeEn, direction);
 		end
 endmodule
 
-module shoot(clock, direction, x, y, writeEn);
-	input clock;
-	input [1:0] direction;
-	output writeEn;
-	output [7:0] x;
-	output [6:0] y;
-	// assume the spaceship is static and the bullet is shot from (80, 60)
-	assign x = 2'd80;
-	assign y =  2'd60;
-	// check what direction the spaceship is facing to
-	always@(posedge clock);
-	begin
-		if (direction == 2'b00) // up
-			begin
-				if (y >= 1'b0)
-					y = y - 1'b1;	
-			end
-		else if (direction == 2'b01) // down
- 			begin
-				if (y <= 3'd120)
-					y = y + 1'b1;
-			end		
-		else if (direction == 2'b11) // left
-			begin
-				if (x >= 1'b0)
-					x <= x - 1'b1;	
-			end
-		else if (direction == 2'b10) // right
-			begin
-				if (y <= 3'd160)
-					x <= x + 1'b1;
-			end
-	end
-endmodule
+
 
 //module control(go, resetN, yIncrement, xIncrement, plot, clock);
 //	input go;

@@ -303,32 +303,17 @@ module Project(
 	  input PS2_KBDAT,                            // Keyboard input data
 	  input CLOCK_50,                             //    On Board 50 MHz
 	  input [0:0] KEY,                            // Reset key
-	  output [6:0] HEX0
-		CLOCK_50,						//	On Board 50 MHz
+	  output [6:0] HEX0,
 		// The ports below are for the VGA output.  Do not change.
-		VGA_CLK,   						//	VGA Clock
-		VGA_HS,							//	VGA H_SYNC
-		VGA_VS,							//	VGA V_SYNC
-		VGA_BLANK_N,						//	VGA BLANK
-		VGA_SYNC_N,						//	VGA SYNC
-		VGA_R,   						//	VGA Red[9:0]
-		VGA_G,	 						//	VGA Green[9:0]
-		VGA_B   						//	VGA Blue[9:0]
+		output VGA_CLK,   						//	VGA Clock
+		output VGA_HS,							//	VGA H_SYNC
+		output VGA_VS,							//	VGA V_SYNC
+		output VGA_BLANK_N,						//	VGA BLANK
+		output VGA_SYNC_N,						//	VGA SYNC
+		output [9:0] VGA_R,   						//	VGA Red[9:0]
+		output [9:0] VGA_G,	 						//	VGA Green[9:0]
+		output [9:0] VGA_B   						//	VGA Blue[9:0]
 	);
-
-	input		CLOCK_50;				//	50 MHz
-
-
-	// Do not change the following outputs
-	output			VGA_CLK;   				//	VGA Clock
-	output			VGA_HS;					//	VGA H_SYNC
-	output			VGA_VS;					//	VGA V_SYNC
-	output			VGA_BLANK_N;				//	VGA BLANK
-	output			VGA_SYNC_N;				//	VGA SYNC
-	output	[9:0]	VGA_R;   				//	VGA Red[9:0]
-	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
-	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
-
 
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
 	wire [2:0] colour;
@@ -338,6 +323,7 @@ module Project(
 	wire [3:0] count;
 	wire resetn;
 	wire [1:0] direction;
+	wire Enable;
 	assign colour = 3'b111;
 	assign resetn = KEY[0];
 
@@ -389,8 +375,7 @@ module Project(
 	hex_display_direction(ship_control, HEX0);
 	counter(CLOCK_50, count);
 	// control the spaceship
-	wire [1:0] direction;
-	wire Enable;
+	
 	spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
 	clock_divider(CLOCK_50, resetn, Enable);
 endmodule
@@ -402,7 +387,6 @@ module spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
 	input [7:0] x;
 	input [6:0] y;
 	output writeEn;
-	output count;
 	output reg [1:0] direction;
 	always @(posedge CLOCK_50)
 	begin
@@ -415,6 +399,41 @@ module spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
 		endcase
 	end
 	
+endmodule
+
+module shoot(clock, direction, x, y, writeEn);
+	input clock;
+	input [1:0] direction;
+	output writeEn;
+	output [7:0] x;
+	output [6:0] y;
+	// assume the spaceship is static and the bullet is shot from (80, 60)
+	assign x = 2'd80;
+	assign y =  2'd60;
+	// check what direction the spaceship is facing to
+	always@(posedge clock)
+	begin
+		if (direction == 2'b00) // up
+			begin
+				if (y >= 1'b0)
+					y = y - 1'b1;	
+			end
+		else if (direction == 2'b01) // down
+ 			begin
+				if (y <= 3'd120)
+					y = y + 1'b1;
+			end		
+		else if (direction == 2'b11) // left
+			begin
+				if (x >= 1'b0)
+					x <= x - 1'b1;	
+			end
+		else if (direction == 2'b10) // right
+			begin
+				if (y <= 3'd160)
+					x <= x + 1'b1;
+			end
+	end
 endmodule
 
 module hex_display_direction(IN, OUT);
