@@ -14,24 +14,17 @@ module drawAsteroidXX(x, y, writeEn, clk, count);
 	end
 endmodule
 
-module TestMovement(HEX7, HEX6, HEX5, HEX4, KEY, SW);
+module Project(HEX7, HEX6, HEX5, HEX4, KEY, SW);
 	output [7:0] HEX7;
 	output [7:0] HEX6;
 	output [7:0] HEX5;
 	output [7:0] HEX4;
-	
+	input [3:0] KEY;
+	input [17:0] SW;
 	wire clk;
 	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
-	reg [7:0] x;
-	reg [6:0] y;
-	reg [7:0] new_x;
-	reg [6:0] new_y;
-	
-	always@ (negedge clk)
-	begin
-		x <= new_x;
-		y <= new_y;
-	end
+	wire [7:0] x;
+	wire [6:0] y;
 	
 	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
 	hex_display(HEX7, x[7:4]);
@@ -40,35 +33,35 @@ module TestMovement(HEX7, HEX6, HEX5, HEX4, KEY, SW);
 	hex_display(HEX4, y[3:0]);
 endmodule
 
-module moveAsteroid(new_x, new_y, old_x, old_y, direction, speed, clk);
+module moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
 	output reg [7:0] new_x;
 	output reg [6:0] new_y;
 	input [7:0] x;
 	input [6:0] y;
 	input [1:0] direction;
 	input [1:0] speed;
-	wire TEMP_SPEED = 1;
+	input clk;
 	always@(posedge clk)
 	begin
 	case (direction[1:0])
 		2'b00:
 		begin 
-			new_y <= y + TEMP_SPEED;
+			new_y <= y + speed;
 			new_x <= x;
 		end
 		2'b01:
 		begin
-			new_y <= y - TEMP_SPEED;
+			new_y <= y - speed;
 			new_x <= x;
 		end
 		2'b11:
 		begin
-			new_x <= x + TEMP_SPEED;
+			new_x <= x + speed;
 			new_y <= y;
 		end
 		2'b10:
 		begin
-			new_x <= x - TEMP_SPEED;
+			new_x <= x - speed;
 			new_y <= y;
 		end
 		default:
