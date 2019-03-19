@@ -23,20 +23,24 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 	 output reg [1:0] direction;
 	 reg [3:0] current;
 	 always@(posedge clk)
-	 if (current != key_press)
 	 begin
-	 	colour = 3'b000;
-	 	if (count < 4'b1111)
-	 		x = 8'b1001111 + count[1:0];
-	 		y = 7'b111100 + count[3:1];
-	 	else if (count == 4'b1111)	
-			current = key_press;
-   	end
-	else
+		if (current != key_press)
 		begin
-	     if (key_press == 4'b0100) //if w is pressed, draw ship in up direction
-		  begin
-			colour = 3'b111;
+			colour = 3'b000;
+			if (count < 4'b1111)
+			begin
+				x = 8'b1001111 + count[1:0];
+				y = 7'b111100 + count[3:2];
+			end 
+			else if (count == 4'b1111)	
+				current = key_press;
+		end
+		
+		else
+		begin
+			if (key_press == 4'b0100) //if w is pressed, draw ship in up direction
+			begin
+				colour = 3'b111;
 		     direction = 2'b00;
 			  case (count[3:0])
 					4'b0000: writeEn = 1'b0;
@@ -81,6 +85,7 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 					default: writeEn = 1'b0;
 				endcase
 			end
+			
 			else if (key_press == 4'b0011) // if s key is pressed, draw ship in down direction
 		   begin
 				colour = 3'b111;
@@ -88,26 +93,26 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			  case (count[3:0])
 					4'b0000:
 					begin
-						 x = 8'b1010000;
+						 x = 8'b1001111;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end
 					4'b0001: writeEn = 1'b0;
 					4'b0010:
 					begin
-						 x = 8'b1010010;
+						 x = 8'b1010001;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end
 					4'b0011:
 					begin
-						 x = 8'b1010000;
+						 x = 8'b1001111;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end
 					4'b0100:
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end
@@ -120,8 +125,8 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 					4'b0110: writeEn = 1'b0;
 					4'b0111:
 					begin
-						 x = 8'b1010001;
-						 y = 7'b111101;
+						 x = 8'b1010000;
+						 y = 7'b111110;
 						 writeEn = 1'b1;
 					end
 					4'b1000: writeEn = 1'b0;
@@ -136,25 +141,25 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 					4'b0000: writeEn = 1'b0;
 					4'b0001:
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end				
 					4'b0010:
 					begin
-						 x = 8'b1010010;
+						 x = 8'b1010001;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end
 					4'b0011:
 					begin
-						 x = 8'b1010000;
+						 x = 8'b1001111;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end
 					4'b0100: 
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end
@@ -162,13 +167,13 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 					4'b0110: writeEn = 1'b0;
 					4'b0111:
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111110;
 						 writeEn = 1'b1;
 					end
 					4'b1000:
 					begin
-						 x = 8'b1010010;
+						 x = 8'b1010001;
 						 y = 7'b111110;
 						 writeEn = 1'b1;
 					end
@@ -182,13 +187,13 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			  case (count[3:0])
 					4'b0000:
 					begin
-						 x = 8'b1010000;
+						 x = 8'b1001111;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end
 					4'b0001:
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111100;
 						 writeEn = 1'b1;
 					end				
@@ -196,25 +201,25 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 					4'b0011: writeEn = 1'b0;
 					4'b0100: 
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end
 					4'b0101: 
 					begin
-						 x = 8'b1010010;
+						 x = 8'b1010001;
 						 y = 7'b111101;
 						 writeEn = 1'b1;
 					end				
 					4'b0110:
 					begin
-						 x = 8'b1010000;
+						 x = 8'b1001111;
 						 y = 7'b111110;
 						 writeEn = 1'b1;
 					end
 					4'b0111:
 					begin
-						 x = 8'b1010001;
+						 x = 8'b1010000;
 						 y = 7'b111110;
 						 writeEn = 1'b1;
 					end
@@ -224,7 +229,7 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			end
 			else if (key_press == 4'b0101) // if space is pressed, shoot
 			begin
-			colour = 3'b111;
+				colour = 3'b111;
 				writeEn = 1'b1;
 				x = 7'b1010000;
 				y = 6'b111100;
@@ -249,7 +254,12 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 							x <= x + 1'b1;
 					end
 			end
+			
 		end
+		
+	 end
+		
+		
 endmodule
 
 //module drawDown(key_press, clk, count, x, y, writeEn, direction);
