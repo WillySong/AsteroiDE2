@@ -293,7 +293,7 @@ always @*
 	8'h6B: ship_control = 4'd7;   // DC2: Left Arrow
 	8'h72: ship_control = 4'd8;   // DC3: Down Arrow
 	8'h74: ship_control = 4'd9;   // DC4: Right Arrow
-	default: ship_control = 4'd0; // NUL
+	default: ship_control = 4'd4; // default up
   endcase
   end
 endmodule
@@ -324,7 +324,6 @@ module Project(
 	wire resetn;
 	wire [1:0] direction;
 	wire Enable;
-	assign colour = 3'b111;
 	assign resetn = KEY[0];
 
 	// Create an Instance of a VGA controller - there can be only one!
@@ -376,65 +375,52 @@ module Project(
 	counter(CLOCK_50, count);
 	// control the spaceship
 	
-	spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
-	clock_divider(CLOCK_50, resetn, Enable);
-endmodule
-
-module spaceship(CLOCK_50, x, y, count, ship_control, writeEn, direction);
-	input [3:0] ship_control;
-	input [3:0] count;
-	input CLOCK_50;
-	input [7:0] x;
-	input [6:0] y;
-	output writeEn;
-	output reg [1:0] direction;
-	always @(posedge CLOCK_50)
-	begin
-		case(ship_control[3:0])
-			4'b0001: drawLeft(CLOCK_50, count, x, y, writeEn, direction);	// a
-			4'b0010: drawRight(CLOCK_50, count, x, y, writeEn, direction); // d
-			4'b0011: drawDown(CLOCK_50, count, x, y, writeEn, direction);	// s
-			4'b0100: drawUp(CLOCK_50, count, x, y, writeEn, direction); // w
-			4'b0101: shoot(Enable, direction, x, y); // space
-		endcase
-	end
+	//clock_divider(CLOCK_50, resetn, Enable);
+	draw(ship_control, CLOCK_50, count, x, y, writeEn, direction, colour);
 	
 endmodule
 
-module shoot(clock, direction, x, y, writeEn);
-	input clock;
-	input [1:0] direction;
-	output writeEn;
-	output [7:0] x;
-	output [6:0] y;
-	// assume the spaceship is static and the bullet is shot from (80, 60)
-	assign x = 2'd80;
-	assign y =  2'd60;
-	// check what direction the spaceship is facing to
-	always@(posedge clock)
-	begin
-		if (direction == 2'b00) // up
-			begin
-				if (y >= 1'b0)
-					y = y - 1'b1;	
-			end
-		else if (direction == 2'b01) // down
- 			begin
-				if (y <= 3'd120)
-					y = y + 1'b1;
-			end		
-		else if (direction == 2'b11) // left
-			begin
-				if (x >= 1'b0)
-					x <= x - 1'b1;	
-			end
-		else if (direction == 2'b10) // right
-			begin
-				if (y <= 3'd160)
-					x <= x + 1'b1;
-			end
-	end
-endmodule
+
+//module shoot(ship_control, clock, direction, x, y, writeEn);
+//	input clock;
+//	input [1:0] direction;
+//	input [3:0] ship_control;
+//	output reg writeEn;
+//	output reg [7:0] x;
+//	output reg [6:0] y;
+//	// assume the spaceship is static and the bullet is shot from (80, 60)
+//
+//	// check what direction the spaceship is facing to
+//	always@(posedge clock)
+//	begin
+//		if (ship_control == 4'b0101) // if space is pressed, shoot
+//		begin
+//		   writeEn = 1'b1;
+//			x = 7'b1010000;
+//			y = 6'b111100;
+//			if (direction == 2'b00) // up
+//				begin
+//					if (y >= 1'b0)
+//						y = y - 1'b1;	
+//				end
+//			else if (direction == 2'b01) // down
+//				begin
+//					if (y <= 3'd120)
+//						y = y + 1'b1;
+//				end		
+//			else if (direction == 2'b11) // left
+//				begin
+//					if (x >= 1'b0)
+//						x <= x - 1'b1;	
+//				end
+//			else if (direction == 2'b10) // right
+//				begin
+//					if (y <= 3'd160)
+//						x <= x + 1'b1;
+//				end
+//		end
+//	end
+//endmodule
 
 module hex_display_direction(IN, OUT);
     input [3:0] IN;
@@ -443,10 +429,10 @@ module hex_display_direction(IN, OUT);
 	 always @(*)
 	 begin
 		case(IN[3:0])
-			4'b0001: OUT = 7'b1011111;	// a
-			4'b0010: OUT = 7'b1111101; // d
-			4'b0011: OUT = 7'b0111111;	// s
-			4'b0100: OUT = 7'b1111110; // w
+			4'b0001: OUT = 7'b1011111;	// a - left
+			4'b0010: OUT = 7'b1111101; // d - right
+			4'b0011: OUT = 7'b0111111;	// s - down
+			4'b0100: OUT = 7'b1111110; // w - up
 			4'b0101: OUT = 7'b1110111; // space
 			
 			default: OUT = 7'b1101011;
