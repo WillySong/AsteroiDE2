@@ -37,298 +37,263 @@ module clock_divider(clock, resetn, Enable);
 	end
 endmodule
 
-module drawUp(clk, count, x, y, writeEn, direction);
+module draw(key_press, clk, count, x, y, writeEn, direction, colour);
     input [3:0] count;
+	 output reg [2:0] colour;
 	 input clk;
+	 input [3:0] key_press;
 	 output reg [7:0] x;
 	 output reg [6:0] y;
 	 output reg writeEn;
-	 output [1:0] direction;
-	 
-	 assign direction = 2'b00;
+	 output reg [1:0] direction;
+	 reg [7:0] i;
+	 reg [6:0] j;
+	 reg [3:0] current;
 	 always@(posedge clk)
+	 if (current != key_press)
 	 begin
-	     case (count[3:0])
-				4'b0000: writeEn = 1'b0;
-		      4'b0001:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111100;
-					 writeEn = 1'b1;
-				end
-				4'b0010: writeEn = 1'b0;
-				4'b0011:
-				begin
-				    x = 8'b1001111;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0100:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0101:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0110:
-				begin
-				    x = 8'b1001111;
-					 y = 7'b111110;
-					 writeEn = 1'b1;
-				end
-				4'b0111: writeEn = 1'b0;
-				4'b1000:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111110;
-					 writeEn = 1'b1;
-				end
-				default: writeEn = 1'b0;
-			endcase
-		end
-endmodule
-
-module drawDown(clk, count, x, y, writeEn, direction);
-     input [3:0] count;
-	 input clk;
-	 output reg [7:0] x;
-	 output reg [6:0] y;
-	 output reg writeEn;
-	 output [1:0] direction;
-	 assign direction = 2'b01;
-	 always@(posedge clk)
-	 begin
-	     case (count[3:0])
-				4'b0000:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111100;
-					 writeEn = 1'b1;
-				end
-		      4'b0001: writeEn = 1'b0;
-				4'b0010:
-				begin
-				    x = 8'b1010010;
-					 y = 7'b111100;
-					 writeEn = 1'b1;
-				end
-				4'b0011:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0100:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0101:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0110: writeEn = 1'b0;
-				4'b0111:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b1000: writeEn = 1'b0;
-				default: writeEn = 1'b0;
-			endcase
-		end
-endmodule
-
-module drawLeft(clk, count, x, y, writeEn, direction);
-    input [3:0] count;
-	input clk;
-	output reg [7:0] x;
-	output reg [6:0] y;
-	output reg writeEn;
-	output [1:0] direction;
-	assign direction = 2'b11;
-	always@(posedge clk)
-	begin
-	 case (count[3:0])
-			4'b0000: writeEn = 1'b0;
-		  4'b0001:
-			begin
-				x = 8'b1010001;
-				y = 7'b111100;
-				writeEn = 1'b1;
-			end				
-			4'b0010:
-			begin
-				x = 8'b1010010;
-				y = 7'b111100;
-				writeEn = 1'b1;
-			end
-			4'b0011:
-			begin
-				x = 8'b1010000;
-				y = 7'b111101;
-				writeEn = 1'b1;
-			end
-			4'b0100: 
-			begin
-				x = 8'b1010001;
-				y = 7'b111101;
-				writeEn = 1'b1;
-			end
-			4'b0101: writeEn = 1'b0;				
-			4'b0110: writeEn = 1'b0;
-			4'b0111:
-			begin
-				x = 8'b1010001;
-				y = 7'b111110;
-				writeEn = 1'b1;
-			end
-			4'b1000:
-			begin
-				x = 8'b1010010;
-				y = 7'b111110;
-				writeEn = 1'b1;
-			end
-			default: writeEn = 1'b0;
-		endcase
+		colour = 3'b000;	
+		current = key_press;
+   	end
 	end
-endmodule			
-
-module drawRight(clk, count, x, y, writeEn, direction);
-    input [3:0] count;
-	 input clk;
-	 output reg [7:0] x;
-	 output reg [6:0] y;
-	 output reg writeEn;
-	 output [1:0] direction;
-	 assign direction = 2'b10;
-	 always@(posedge clk)
-	 begin
-	     case (count[3:0])
-				4'b0000:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111100;
-					 writeEn = 1'b1;
-				end
-		      4'b0001:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111100;
-					 writeEn = 1'b1;
-				end				
-				4'b0010: writeEn = 1'b0;
-				4'b0011: writeEn = 1'b0;
-				4'b0100: 
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end
-				4'b0101: 
-				begin
-				    x = 8'b1010010;
-					 y = 7'b111101;
-					 writeEn = 1'b1;
-				end				
-				4'b0110:
-				begin
-				    x = 8'b1010000;
-					 y = 7'b111110;
-					 writeEn = 1'b1;
-				end
-				4'b0111:
-				begin
-				    x = 8'b1010001;
-					 y = 7'b111110;
-					 writeEn = 1'b1;
-				end
-				4'b1000: writeEn = 1'b0;
-				default: writeEn = 1'b0;
-			endcase
+		else
+		begin
+	     if (key_press == 4'b0100) //if w is pressed, draw ship in up direction
+		  begin
+			current = key_press;
+			colour = 3'b111;
+		     direction = 2'b00;
+			  case (count[3:0])
+					4'b0000: writeEn = 1'b0;
+					4'b0001:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end
+					4'b0010: writeEn = 1'b0;
+					4'b0011:
+					begin
+						 x = 8'b1001111;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0100:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0101:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0110:
+					begin
+						 x = 8'b1001111;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					4'b0111: writeEn = 1'b0;
+					4'b1000:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					default: writeEn = 1'b0;
+				endcase
+			end
+			else if (key_press == 4'b0011) // if s key is pressed, draw ship in down direction
+		   begin
+				current = key_press;
+				colour = 3'b111;
+		     direction = 2'b01;
+			  case (count[3:0])
+					4'b0000:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end
+					4'b0001: writeEn = 1'b0;
+					4'b0010:
+					begin
+						 x = 8'b1010010;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end
+					4'b0011:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0100:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0101:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0110: writeEn = 1'b0;
+					4'b0111:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b1000: writeEn = 1'b0;
+					default: writeEn = 1'b0;
+				endcase
+			end
+			else if (key_press == 4'b0001) // if a key is pressed, draw ship in left direction
+			begin
+				current = key_press;
+				colour = 3'b111;
+		     direction = 2'b10;
+			  case (count[3:0])
+					4'b0000: writeEn = 1'b0;
+					4'b0001:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end				
+					4'b0010:
+					begin
+						 x = 8'b1010010;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end
+					4'b0011:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0100: 
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0101: writeEn = 1'b0;				
+					4'b0110: writeEn = 1'b0;
+					4'b0111:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					4'b1000:
+					begin
+						 x = 8'b1010010;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					default: writeEn = 1'b0;
+				endcase
+			end
+			else if (key_press == 4'b0010) // if d key is pressed, draw ship in right direction
+			begin
+				current = key_press;
+				colour = 3'b111;
+			  direction = 2'b11;
+			  case (count[3:0])
+					4'b0000:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end
+					4'b0001:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111100;
+						 writeEn = 1'b1;
+					end				
+					4'b0010: writeEn = 1'b0;
+					4'b0011: writeEn = 1'b0;
+					4'b0100: 
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end
+					4'b0101: 
+					begin
+						 x = 8'b1010010;
+						 y = 7'b111101;
+						 writeEn = 1'b1;
+					end				
+					4'b0110:
+					begin
+						 x = 8'b1010000;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					4'b0111:
+					begin
+						 x = 8'b1010001;
+						 y = 7'b111110;
+						 writeEn = 1'b1;
+					end
+					4'b1000: writeEn = 1'b0;
+					default: writeEn = 1'b0;
+				endcase
+			end
+			else if (key_press == 4'b0101) // if space is pressed, shoot
+			begin
+			colour = 3'b111;
+				writeEn = 1'b1;
+				x = 7'b1010000;
+				y = 6'b111100;
+				if (direction == 2'b00) // up
+					begin
+						if (y >= 1'b0)
+							y = y - 1'b1;	
+					end
+				else if (direction == 2'b01) // down
+					begin
+						if (y <= 3'd120)
+							y = y + 1'b1;
+					end		
+				else if (direction == 2'b11) // left
+					begin
+						if (x >= 1'b0)
+							x <= x - 1'b1;	
+					end
+				else if (direction == 2'b10) // right
+					begin
+						if (y <= 3'd160)
+							x <= x + 1'b1;
+					end
+			end
+			
+			else
+			begin
+				
+			end
 		end
 endmodule
 
-
-
-//module control(go, resetN, yIncrement, xIncrement, plot, clock);
-//	input go;
-//	input resetN;
-//	input clock;
-//	output reg  plot;
-//	output reg [1:0] yIncrement, xIncrement;
+//module drawDown(key_press, clk, count, x, y, writeEn, direction);
+//     input [3:0] count;
+//	 input clk;
+//	 input [3:0] key_press;
+//	 output reg [7:0] x;
+//	 output reg [6:0] y;
+//	 output reg writeEn;
+//	 output reg [1:0] direction;
 //
-//	reg [4:0] current_state, next_state;
-//	// Note FSM basically a counter that halts on stop until go is recieved again
-//	localparam  Y_0_Y_0 = 5'd0,
-//					Y_0_X_1 = 5'd1,
-//					Y_0_X_2 = 5'd2,
-//					Y_0_X_3 = 5'd3,
-//					Y_1_Y_0 = 5'd4,
-//					Y_1_X_1 = 5'd5,
-//					Y_1_X_2 = 5'd6,
-//					Y_1_X_3 = 5'd7,
-//					Y_2_Y_0 = 5'd8,
-//					Y_2_X_1 = 5'd9,
-//					Y_2_X_2 = 5'd10,
-//					Y_2_X_3 = 5'd11,
-//					Y_3_Y_0 = 5'd12,
-//					Y_3_X_1 = 5'd13,
-//					Y_3_X_2 = 5'd14,
-//					Y_3_X_3 = 5'd15,
-//					STOP = 5'd16;
-//
-//	// Next state logic aka our state table
-//	always@(posedge clock)
-//	begin: state_table
-//			case (current_state)
-//				STOP: begin
-//						if (go) next_state = Y_0_Y_0;
-//						else next_state = STOP;
-//						end
-//				default: next_state = current_state + 1'b1;  // Since states are linear move to next state
-//			endcase
-//	end // state_table
-//
-//
-//	// Output logic aka all of our datapath control signals
-//	always @(*)
-//	begin: enable_signals
-//			// By default make all our signals 0
-//			// plot = 1'b0;
-//			// yIncrement = 2'd0;
-//			// xIncrement = 2'd0;
-//			case (current_state)
-//					STOP: begin // Do R <- A + C
-//						plot = 1'b0;
-//						yIncrement = 2'd0;
-//						xIncrement = 2'd0;
-//					end
-//					default: begin
-//						plot = 1'b1;
-//						yIncrement = current_state[3:2];
-//						xIncrement = current_state[1:0];
-//					end
-//			endcase
-//	end // enable_signals
-//
-//	// current_state registers
-//	always@(posedge clock)
-//	begin: state_FFs
-//			if(!resetN)
-//				begin
-//					current_state <= STOP;
-//				end
-//			else
-//					current_state <= next_state;
-//	end // state_FFS
-//endmodule
+//	 always@(posedge clk)
+//	 begin
+//	     
