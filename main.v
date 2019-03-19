@@ -4,37 +4,12 @@ module counter(CLOCK_50, count);
 	output reg [3:0] count;
 	always@(posedge CLOCK_50)
 	begin
-		if (count == 4'b1110)
+		if (count == 4'b1111)
 			count <= 4'b0000;
 		else
 			count = count + 1'b1;
 	end
 
-endmodule
-
-// clock_divider slows down the CLOCK_50. it is for bullet motion
-module clock_divider(clock, resetn, Enable);
-	input clock, resetn;
-	output reg Enable;
-	reg [27:0] q;
-	always @(posedge clock) // triggered every time clock rises
-	begin
-		if (resetn == 1'b0) // when resetn is 0...
-		begin
-			Enable <= 0;
-			q <= 0; // set q to 0
-		end
-		else if (q == 28'd99999999) // ...otherwise if q is the maximum counter value
-		begin	
-			Enable <= 1;
-			q <= 0; // reset q to 0
-		end
-		else // ...otherwise update q (only when Enable is 1)
-		begin
-			Enable <= 0;
-			q <= q + 1'b1; // increment q
-		end
-	end
 endmodule
 
 module draw(key_press, clk, count, x, y, writeEn, direction, colour);
@@ -46,21 +21,21 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 	 output reg [6:0] y;
 	 output reg writeEn;
 	 output reg [1:0] direction;
-	 reg [7:0] i;
-	 reg [6:0] j;
 	 reg [3:0] current;
 	 always@(posedge clk)
 	 if (current != key_press)
 	 begin
-		colour = 3'b000;	
-		current = key_press;
+	 	colour = 3'b000;
+	 	if (count < 4'b1111)
+	 		x = 8'b1001111 + count[1:0];
+	 		y = 7'b111100 + count[3:1];
+	 	else if (count == 4'b1111)	
+			current = key_press;
    	end
-	end
-		else
+	else
 		begin
 	     if (key_press == 4'b0100) //if w is pressed, draw ship in up direction
 		  begin
-			current = key_press;
 			colour = 3'b111;
 		     direction = 2'b00;
 			  case (count[3:0])
@@ -108,7 +83,6 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			end
 			else if (key_press == 4'b0011) // if s key is pressed, draw ship in down direction
 		   begin
-				current = key_press;
 				colour = 3'b111;
 		     direction = 2'b01;
 			  case (count[3:0])
@@ -156,7 +130,6 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			end
 			else if (key_press == 4'b0001) // if a key is pressed, draw ship in left direction
 			begin
-				current = key_press;
 				colour = 3'b111;
 		     direction = 2'b10;
 			  case (count[3:0])
@@ -204,7 +177,6 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 			end
 			else if (key_press == 4'b0010) // if d key is pressed, draw ship in right direction
 			begin
-				current = key_press;
 				colour = 3'b111;
 			  direction = 2'b11;
 			  case (count[3:0])
@@ -276,11 +248,6 @@ module draw(key_press, clk, count, x, y, writeEn, direction, colour);
 						if (y <= 3'd160)
 							x <= x + 1'b1;
 					end
-			end
-			
-			else
-			begin
-				
 			end
 		end
 endmodule
