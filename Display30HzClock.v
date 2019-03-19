@@ -1,47 +1,83 @@
-`timescale 1ns / 1ns // `timescale time_unit/time_precision
+// Screen size is 160x120
 
-module clock30Hz(out, clock);
-	output out;
-	input clock;
-	reg [22:0] q;                // declare q
-
-	always@(posedge clock)     // triggered every time clock rises
+module drawAsteroidXX(x, y, writeEn, clk, count);
+	output reg [7:0] x;
+	output reg [6:0] y;
+	output reg writeEn;
+	input clk;
+	input [3:0] count;
+	always@ (posedge clk)
 	begin
-		if(q == 21'b1_1001_0110_1110_0110_1010)    // reset at 30hz
-			q <= 0;                 // reset q to 0
-		else 
-			q <= q + 1'b1;          // increment q
-	end
-	
-	assign out = q == 0;
-endmodule
-
-module countto30(out, clock);
-	output reg [5:0] out;
-	input clock;
-
-	always@ (posedge clock)     // triggered every time clock rises
-	begin
-		if(out == 5'd29)    // ...otherwise if q is the maximum counter value
-			out <= 0;                 // reset q to 0
-		else  // ...otherwise update q (only when Enable is 1)
-			out <= out + 1'b1;          // increment q
+		case (count[3:0])
+			default: writeEn = 1'b1;
+		endcase
 	end
 endmodule
 
-module Display30HzClock(HEX6, HEX7, LEDR, CLOCK_50);
-	output [7:0] HEX6;
+module TestMovement(HEX7, HEX6, HEX5, HEX4, KEY, SW);
 	output [7:0] HEX7;
-	output [17:0] LEDR;
-	input CLOCK_50;
-	wire [5:0] out;
-	wire clock;
+	output [7:0] HEX6;
+	output [7:0] HEX5;
+	output [7:0] HEX4;
 	
-	countto30(out, clock);
-	clock30Hz(clock, CLOCK_50);
+	wire clk;
+	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
+	reg [7:0] x;
+	reg [6:0] y;
+	reg [7:0] new_x;
+	reg [6:0] new_y;
 	
-	hex_display(HEX6, out[3:0]);
-	hex_display(HEX7, 4'b0000 + out[5:4]);
+	always@ (negedge clk)
+	begin
+		x <= new_x;
+		y <= new_y;
+	end
+	
+	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
+	hex_display(HEX7, x[7:4]);
+	hex_display(HEX6, x[3:0]);
+	hex_display(HEX5, y[6:4]);
+	hex_display(HEX4, y[3:0]);
+endmodule
+
+module moveAsteroid(new_x, new_y, old_x, old_y, direction, speed, clk);
+	output reg [7:0] new_x;
+	output reg [6:0] new_y;
+	input [7:0] x;
+	input [6:0] y;
+	input [1:0] direction;
+	input [1:0] speed;
+	wire TEMP_SPEED = 1;
+	always@(posedge clk)
+	begin
+	case (direction[1:0])
+		2'b00:
+		begin 
+			new_y <= y + TEMP_SPEED;
+			new_x <= x;
+		end
+		2'b01:
+		begin
+			new_y <= y - TEMP_SPEED;
+			new_x <= x;
+		end
+		2'b11:
+		begin
+			new_x <= x + TEMP_SPEED;
+			new_y <= y;
+		end
+		2'b10:
+		begin
+			new_x <= x - TEMP_SPEED;
+			new_y <= y;
+		end
+		default:
+		begin
+			new_x <= x;
+			new_y <= y;
+		end
+	endcase
+	end
 endmodule
 
 module hex_display(OUT, IN);
@@ -72,4 +108,3 @@ module hex_display(OUT, IN);
 		endcase
 	end
 endmodule
-	
