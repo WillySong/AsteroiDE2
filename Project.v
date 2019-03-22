@@ -302,8 +302,10 @@ module Project(
 	  input PS2_KBCLK,                            // Keyboard clock
 	  input PS2_KBDAT,                            // Keyboard input data
 	  input CLOCK_50,                             //    On Board 50 MHz
+	  input [9:0] SW,
 	  input [0:0] KEY,                            // Reset key
 	  output [6:0] HEX0,
+	  output [6:0] HEX1,
 		// The ports below are for the VGA output.  Do not change.
 		output VGA_CLK,   						//	VGA Clock
 		output VGA_HS,							//	VGA H_SYNC
@@ -319,11 +321,12 @@ module Project(
 	wire [2:0] colour;
 	wire [7:0] x;
 	wire [6:0] y;
+	wire [7:0] x_increment;
+	wire [6:0] y_increment;
 	wire writeEn;
 	wire [3:0] count;
 	wire resetn;
 	wire [1:0] direction;
-	wire Enable;
 	assign resetn = KEY[0];
 
 	// Create an Instance of a VGA controller - there can be only one!
@@ -354,13 +357,13 @@ module Project(
 				
 						
 	wire [3:0] ship_control;
-   	wire [7:0] kb_scan_code;
+   wire [7:0] kb_scan_code;
 	wire kb_sc_ready, kb_letter_case;
 	
 	key2ascii SC2A (
-		.ship_control(ship_control),
+		.letter_case(kb_letter_case),
 		.scan_code(kb_scan_code),
-		.letter_case(kb_letter_case)
+		.ship_control(ship_control)
 	);
 	keyboard kd (
 		.clk(CLOCK_50),
@@ -372,14 +375,88 @@ module Project(
 		.letter_case_out(kb_letter_case)
 	);
 	hex_display_direction(ship_control, HEX0);
-	counter(CLOCK_50, count);
-	// control the spaceship
 	
-	//clock_divider(CLOCK_50, resetn, Enable);
-	draw(ship_control, CLOCK_50, count, x, y, writeEn, direction, colour);
-	
+	ship(ship_control, CLOCK_50, x, y, colour, writeEn, HEX1);
+	get_direction(ship_control, direction);
 endmodule
 
+module ship(direction, clock, x, y, colour, writeEn, HEX);
+	input clock;
+	input [3:0] direction;
+	output reg [7:0] x;
+	output reg [6:0] y;
+	output reg [2:0] colour;
+	output reg writeEn;
+	output [6:0] HEX;
+	
+	reg [1:0] current_state;
+	// check every pixel of the screen
+	always@(posedge clock)
+	begin
+		if (x < 8'd160 && y < 7'd120) begin // if inside the screen
+			x <= x + 1'b1;
+			y <= y;
+		end
+		else if (x == 8'd160 && y < 7'd120) begin// if reaches the right boarder
+			x <= 0;
+			y <= y + 1'b1;
+		end
+		else //if (x == 8'd160 && y == 7'd120) begin // if reaches the bottom right of the screen
+			begin
+			x <= 0;
+			y <= 0;
+		end
+	end
+	
+	hex_display_direction(direction, HEX);
+	
+	always@(posedge clock)
+	begin
+	//once we get the pixel position, check which colour it needs to send
+		// up
+		if (direction == 4'b0100 && ((x == 8'd80 && (y == 7'd60 || y == 7'd61)) || (x == 8'd79 && (y == 7'd61 || y == 7'd62)) || (x == 8'd81 && (y == 7'd61 || y == 7'd62)))) begin
+			colour <= 3'b111;
+			writeEn <= 1'b1;
+		end
+		//right
+		else if (direction == 4'b0010 && ((x == 8'd80 && (y == 7'd60 || y == 7'd61 || y == 7'd62)) || (x == 8'd79 && (y == 7'd60 || y == 7'd62)) || (x == 8'd81 && y == 7'd61))) begin
+			colour <= 3'b111;
+			writeEn <= 1'b1;
+		end
+		//down
+		else if (direction == 4'b0011 && ((x == 8'd80 && (y == 7'd61 || y == 7'd62)) || (x == 8'd79 && (y == 7'd60 || y == 7'd61)) || (x == 8'd81 && (y == 7'd60 || y == 7'd61)))) begin
+			colour <= 3'b111;
+			writeEn <= 1'b1;
+		end
+		//left
+		else if (direction == 4'b0001 && ((x == 8'd80 && (y == 7'd60 || y == 7'd61 || y == 7'd62)) || (x == 8'd79 && y == 7'd61) || (x == 8'd81 && (y == 7'd60 || y == 7'd62)))) begin
+			colour <= 3'b111;
+			writeEn <= 1'b1;
+		end
+		else begin
+			colour <= 3'b000;
+			writeEn <= 1'b1;
+		end
+	end
+endmodule 
+
+module get_direction(IN, OUT);
+	input [3:0] IN;
+	output reg [1:0] OUT;
+	
+	always @(*)
+	 begin
+		case(IN[3:0])
+			4'b0001: OUT = 2'b00;	// a - up
+			4'b0010: OUT = 2'b01; // d - right
+			4'b0011: OUT = 2'b10;	// s - left
+			4'b0100: OUT = 2'b11; // w - down
+			
+			default: OUT = 2'b00;
+		endcase
+
+	end
+endmodule
 
 //module shoot(ship_control, clock, direction, x, y, writeEn);
 //	input clock;
