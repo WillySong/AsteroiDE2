@@ -298,7 +298,7 @@ always @*
   end
 endmodule
 
-module Project(
+module project(
 	  input PS2_KBCLK,                            // Keyboard clock
 	  input PS2_KBDAT,                            // Keyboard input data
 	  input CLOCK_50,                             //    On Board 50 MHz
@@ -399,33 +399,6 @@ module Project(
 	ship(ship_control, bullet_state, resetn, CLOCK_50, x, y, colour, writeEn, direction);
 endmodule
 
-//module draw(bullet_state, bullet_x, bullet_y, ship_x, ship_y, draw_x, draw_y);
-//	input bullet_state;
-//	input [7:0] bullet_x, ship_x;
-//	input [6:0] bullet_y, ship_y;
-//	output reg [7:0] draw_x;
-//	output reg [6:0] draw_y;
-//	always@(*) begin
-//		if (bullet_state == 1'b0) begin
-//			draw_x <= ship_x;
-//			draw_y <= ship_y;
-//		end
-//		else begin
-//			draw_x <= bullet_x;
-//			draw_y <= bullet_y;
-//		end
-//	end
-//endmodule
-
-//module mux2to1(x, y, s, m);
-//    input [7:0] x; //selected when s is 0
-//    input y; //selected when s is 1
-//    input s; //select signal
-//    output m; //output
-//  
-//    assign m = s & y | ~s & x;
-//
-//endmodule
 
 module bullet(clock, direction, bullet_state, bullet_x, bullet_y, colour, writeEn);
 	input clock, bullet_state;
@@ -566,10 +539,17 @@ module ship(ship_control, bullet_state, resetn, clock, x, y, colour, writeEn, di
 		if (bullet_state == 1'b1) begin
 			bullet_x[79] <= 1'b1;
 			bullet_y[61] <= 1'b1;
-			if (direction == left) // left
-					bullet_x <= bullet_x << 1;
+			if (direction == up) // up
+					bullet_y <= bullet_y << 1;
+			else if (direction == right) // right
+				bullet_x <= bullet_x >> 1;
+			else if (direction == down) //down
+				bullet_y <= bullet_y >> 1;
+			else if (direction == left) //left
+				bullet_x <= bullet_x << 1;
 		end
-		if (bullet_x[x] == 1'b1) begin
+		// check whether the pixel is 1
+		if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
 			colour <= 3'b110;
 			writeEn <= 1'b1;
 		end
