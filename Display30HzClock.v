@@ -1,76 +1,48 @@
-// Screen size is 160x120
+`timescale 1ns / 1ns // `timescale time_unit/time_precision
 
-module drawAsteroidXX(x, y, writeEn, clk, count);
-	output reg [7:0] x;
-	output reg [6:0] y;
-	output reg writeEn;
-	input clk;
-	input [3:0] count;
-	always@ (posedge clk)
+module clock30Hz(out, clock);
+	output out;
+	input clock;
+	reg [27:0] q;                // declare q
+
+	always@(posedge clock)     // triggered every time clock rises
 	begin
-		case (count[3:0])
-			default: writeEn = 1'b1;
-		endcase
+		if(q == 21'b1_1001_0110_1110_0110_1010)    // reset at 30hz
+			q <= 0;                 // reset q to 0
+		else  // ...otherwise update q (only when Enable is 1)
+			q <= q + 1'b1;          // increment q
 	end
-endmodule
-
-module Project(HEX7, HEX6, HEX5, HEX4, KEY, SW);
-	output [7:0] HEX7;
-	output [7:0] HEX6;
-	output [7:0] HEX5;
-	output [7:0] HEX4;
-	input [3:0] KEY;
-	input [17:0] SW;
-	wire clk;
-	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
-	wire [7:0] x;
-	wire [6:0] y;
 	
-	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
-	hex_display(HEX7, x[7:4]);
-	hex_display(HEX6, x[3:0]);
-	hex_display(HEX5, y[6:4]);
-	hex_display(HEX4, y[3:0]);
+	assign out = q == 0;
 endmodule
 
-module moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-	output reg [7:0] new_x;
-	output reg [6:0] new_y;
-	input [7:0] x;
-	input [6:0] y;
-	input [1:0] direction;
-	input [1:0] speed;
-	input clk;
-	always@(posedge clk)
+module countto30(out, clock);
+	output reg [5:0] out;
+	input clock;
+
+	always@ (posedge clock)     // triggered every time clock rises
 	begin
-	case (direction[1:0])
-		2'b00:
-		begin 
-			new_y <= y + speed;
-			new_x <= x;
-		end
-		2'b01:
-		begin
-			new_y <= y - speed;
-			new_x <= x;
-		end
-		2'b11:
-		begin
-			new_x <= x + speed;
-			new_y <= y;
-		end
-		2'b10:
-		begin
-			new_x <= x - speed;
-			new_y <= y;
-		end
-		default:
-		begin
-			new_x <= x;
-			new_y <= y;
-		end
-	endcase
+		if(out == 4'd30)    // ...otherwise if q is the maximum counter value
+			out <= 0;                 // reset q to 0
+		else  // ...otherwise update q (only when Enable is 1)
+			out <= out + 1'b1;          // increment q
 	end
+endmodule
+
+module Display30HzClock(HEX0, HEX1, LEDR, CLOCK_50);
+	output [7:0] HEX0;
+	output [7:0] HEX1;
+	output [17:0] LEDR;
+	input CLOCK_50;
+	wire [4:0] out;
+	wire clock;
+	
+	assign LEDR[4:0] = out[4:0];
+	countto30(out, clock);
+	clock30Hz(clock, CLOCK_50);
+	
+	hex_display(HEX0, out[3:0]);
+	hex_display(HEX1, out[4]);
 endmodule
 
 module hex_display(OUT, IN);
@@ -101,3 +73,4 @@ module hex_display(OUT, IN);
 		endcase
 	end
 endmodule
+	
