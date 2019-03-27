@@ -25,7 +25,7 @@ module hit_single_layer1_layer2(led, hit_x, hit_y, hit_result, layer1, layer2, c
 			hit_y <= hit_y + 1'b1;
 		end
 		
-		if (layer1[hit_x+hit_y*120] == 1 && layer2[hit_x+hit_y*120] == 1)
+		if (layer1[hit_x+hit_y*160] == 1 && layer2[hit_x+hit_y*160] == 1)
 			hit_result <= 1;
 	end
 endmodule
