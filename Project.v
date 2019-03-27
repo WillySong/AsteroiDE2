@@ -298,7 +298,7 @@ always @*
   end
 endmodule
 
-module project(
+module Project(
 	  input PS2_KBCLK,                            // Keyboard clock
 	  input PS2_KBDAT,                            // Keyboard input data
 	  input CLOCK_50,                             //    On Board 50 MHz
@@ -325,15 +325,16 @@ module project(
 	wire [2:0] colour;
 	wire [7:0] x;
 	wire [6:0] y;
-	wire [7:0] bullet_x, ship_x, draw_x;
-	wire [6:0] bullet_y, ship_y, draw_y;
 	wire writeEn;
 	wire [3:0] count;
 	wire clock_30;
 	wire resetn;
 	wire [1:0] bullet_state;
-	wire clk;
 	wire [3:0] direction;
+	wire [159:0] bullet_x;
+	wire [119:0] bullet_y;
+	wire [159:0] ship_x;
+	wire [119:0] ship_y;
 //	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
 	
 //	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
@@ -350,8 +351,8 @@ module project(
 			.resetn(resetn),
 			.clock(CLOCK_50),
 			.colour(colour),
-			.x(draw_x),
-			.y(draw_y),
+			.x(x),
+			.y(y),
 			.plot(writeEn),
 			/* Signals for the DAC to drive tyhe monitor. */
 			.VGA_R(VGA_R),
@@ -366,14 +367,12 @@ module project(
 		defparam VGA.RESOLUTION = "160x120";
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
-		defparam VGA.BACKGROUND_IMAGE = "black.mif";	
-			
+		defparam VGA.BACKGROUND_IMAGE = "black.mif";		
 				
 						
 	wire [3:0] ship_control;
    wire [7:0] kb_scan_code;
 	wire kb_sc_ready, kb_letter_case;
-	
 	key2ascii SC2A (
 		.letter_case(kb_letter_case),
 		.scan_code(kb_scan_code),
@@ -388,59 +387,41 @@ module project(
 		.scan_code_ready(kb_sc_ready),
 		.letter_case_out(kb_letter_case)
 	);
+
 //	hex_display(ship_control, HEX0);
 	counter(CLOCK_50, x, y);
 	shoot_state(ship_control, bullet_state);
 	clock30Hz(clock_30, CLOCK_50);
 //	draw(bullet_state, bullet_x, bullet_y, ship_x, ship_y, draw_x, draw_y);
-//	bullet(clock_30, direction, bullet_state, bullet_x, bullet_y);
+	bullet(clock_30, direction, bullet_state, bullet);
 //	drawAsteroidXX(x, y, writeEn, clk, count);
 //	moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-	ship(ship_control, bullet_state, resetn, CLOCK_50, x, y, colour, writeEn, direction);
+	ship(ship_control, CLOCK_50, ship);
+	start(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
 endmodule
 
 
-module bullet(clock, direction, bullet_state, bullet_x, bullet_y, colour, writeEn);
+module bullet(clock, direction, bullet_state, bullet_x, bullet_y);
 	input clock, bullet_state;
 	input [3:0] direction;
-	output reg [2:0] colour;
-	output reg writeEn;
-	output reg [7:0] bullet_x;
-	output reg [6:0] bullet_y;
+	output reg [159:0] bullet_x;
+	output reg [119:0] bullet_y; 
 	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
-	// Registers
-    always @(posedge clock)
-    begin
-        if(bullet_state == 1'b0) begin
-            bullet_x = 8'd80; // Should set reset direction to up
-				bullet_y  =7'd60;
-			end
-        else begin
-			if (direction == up) // up
-				begin
-					if (bullet_y >= 1'b0)
-						bullet_y = bullet_y - 1'b1;	
-				end
-			else if (direction == down) // down
-				begin
-					if (bullet_y <= 3'd120)
-						bullet_y = bullet_y + 1'b1;
-				end		
-			else if (direction == left) // left
-				begin
-					if (bullet_x >= 1'b0)
-						bullet_x <= bullet_x - 1'b1;	
-				end
-			else if (direction == right) // right
-				begin
-					if (bullet_y <= 3'd160)
-						bullet_x <= bullet_x + 1'b1;
-				end
-			colour <= 3'b110;
-			writeEn <= 1'b1;
-		end		
-	end
-	
+	always@(posedge clock)
+	begin
+		if (bullet_state == 1'b1) begin
+			bullet_x[40] = 1'b1;
+			bullet_y[40] = 1'b1;
+		end
+//		if (direction == up) // up
+//			bullet_y <= bullet_y << 1;
+//		else if (direction == right) // right
+//			bullet_x <= bullet_x >> 1;
+//		else if (direction == down) //down
+//			bullet_y <= bullet_y >> 1;
+//		else if (direction == left) //left
+//			bullet_x <= bullet_x << 1;
+	end	
 endmodule
 
 module counter(clock, x, y);
@@ -450,7 +431,7 @@ module counter(clock, x, y);
 	// check every pixel of the screen
 	always@(posedge clock)
 	begin
-		if (x < 8'd160 && y < 7'd120) begin // if inside the screen
+		if (x < 8'd160 && y < 7'd120) begin // if insbulletide the screen
 			x <= x + 1'b1;
 			y <= y;
 		end
@@ -468,7 +449,6 @@ endmodule
 module shoot_state(IN, OUT);
 	input [3:0] IN;
 	output reg OUT;
-	
 	always @(*)
 	 begin
 		case(IN[3:0])
@@ -478,40 +458,54 @@ module shoot_state(IN, OUT);
 	 end	
 endmodule
 
-module ship(ship_control, bullet_state, resetn, clock, x, y, colour, writeEn, direction);
-	input clock, resetn, bullet_state;//
+module ship(ship_control, clock, ship_x, ship_y);
 	input [3:0] ship_control;
+	input clock;
+	output reg [159:0] ship_x;
+	output reg [119:0] ship_y;
+	reg start;
+	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
+	always@(posedge clock)
+	begin
+		if (start == 1'b0) begin
+			ship_x[80] <= 1'b1;
+			ship_y[60] <= 1'b1;
+			start <= 1'b1;
+		end
+		
+		else begin
+		if (ship_control == up) // up
+			ship_y <= ship_y << 1;
+		else if (ship_control == right) // right
+			ship_x <= ship_x >> 1;
+		else if (ship_control == down) //down
+			ship_y <= ship_y >> 1;
+		else if (ship_control == left) //left
+			ship_x <= ship_x << 1;		
+		end
+	end
+	
+endmodule
+
+module start(clock, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
+	input clock;
 	input [7:0] x;
 	input [6:0] y;
 	output reg [2:0] colour;
 	output reg writeEn;
-	output reg [3:0] direction;
-	reg [159:0] bullet_x;
-	reg [119:0] bullet_y;
-	
-	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001, start_x = 8'd80, start_y = 7'd60;
-	
-	
+	input [159:0] bullet_x;
+	input [119:0] bullet_y;
+	input [159:0] ship_x;
+	input [119:0] ship_y;
+		
 	always@(posedge clock)
 	begin
 	//once we get the pixel position, check which colour it needs to send
-		// up
-		if (ship_control == up && ((x == 8'd80 && (y == 7'd60 || y == 7'd61)) || (x == 8'd79 && (y == 7'd61 || y == 7'd62)) || (x == 8'd81 && (y == 7'd61 || y == 7'd62)))) begin
+		if (ship_x[x] == 1'b1 && ship_y[y] == 1'b1) begin
 			colour <= 3'b111;
 			writeEn <= 1'b1;
 		end
-		//right
-		else if (ship_control == right && ((x == 8'd80 && (y == 7'd60 || y == 7'd61 || y == 7'd62)) || (x == 8'd79 && (y == 7'd60 || y == 7'd62)) || (x == 8'd81 && y == 7'd61))) begin
-			colour <= 3'b111;
-			writeEn <= 1'b1;
-		end
-		//down
-		else if (ship_control == down && ((x == 8'd80 && (y == 7'd61 || y == 7'd62)) || (x == 8'd79 && (y == 7'd60 || y == 7'd61)) || (x == 8'd81 && (y == 7'd60 || y == 7'd61)))) begin
-			colour <= 3'b111;
-			writeEn <= 1'b1;
-		end
-		//left
-		else if (ship_control == left && ((x == 8'd80 && (y == 7'd60 || y == 7'd61 || y == 7'd62)) || (x == 8'd79 && y == 7'd61) || (x == 8'd81 && (y == 7'd60 || y == 7'd62)))) begin
+		if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
 			colour <= 3'b111;
 			writeEn <= 1'b1;
 		end
@@ -521,39 +515,7 @@ module ship(ship_control, bullet_state, resetn, clock, x, y, colour, writeEn, di
 		end
 	end
 	
-	 // State Registers
-    always @(posedge clock)
-    begin: state_FFs
-        if(resetn == 1'b0) begin
-            direction <= up; // Should set reset direction to up 
-				bullet_x <= 160'b0;
-				bullet_y <= 120'b0;
-			end
-        else begin
-            direction <= ship_control;
-			end
-    end // state_FFS
-	 
-   always @(posedge clock)
-    begin
-		if (bullet_state == 1'b1) begin
-			bullet_x[79] <= 1'b1;
-			bullet_y[61] <= 1'b1;
-			if (direction == up) // up
-					bullet_y <= bullet_y << 1;
-			else if (direction == right) // right
-				bullet_x <= bullet_x >> 1;
-			else if (direction == down) //down
-				bullet_y <= bullet_y >> 1;
-			else if (direction == left) //left
-				bullet_x <= bullet_x << 1;
-		end
-		// check whether the pixel is 1
-		if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
-			colour <= 3'b110;
-			writeEn <= 1'b1;
-		end
-	end
+
 endmodule 
 
 // Screen size is 160x120
@@ -576,7 +538,7 @@ endmodule
 //	output reg [6:0] new_y;
 //	input [7:0] x;
 //	input [6:0] y;
-//	input [1:0] direction;
+//	input [1:0] direct	input [119:0] bullet_y;ion;
 //	input [1:0] speed;
 //	input clk;
 //	always@(posedge clk)
@@ -602,7 +564,7 @@ endmodule
 //			new_x <= x - speed;
 //			new_y <= y;
 //		end
-//		default:
+//		default:[159:0] bullet_x;
 //		begin
 //			new_x <= x;
 //			new_y <= y;
