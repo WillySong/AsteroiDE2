@@ -312,7 +312,7 @@ module Working(
 	  output [6:0] HEX5,
 	  output [6:0] HEX6,
 	  output [6:0] HEX7,
-	  output [17:0] LEDR,
+	  //output [17:0] LEDR,
 		// The ports below are for the VGA output.  Do not change.
 		output VGA_CLK,   						//	VGA Clock
 		output VGA_HS,							//	VGA H_SYNC
@@ -394,27 +394,35 @@ module Working(
 
 //	hex_display(ship_control, HEX0);
 	counter(CLOCK_50, x, y);
-	shoot_state(SW[0], bullet_state);
+	shoot_state(SW[0] || SW[16], bullet_state);
 	clock30Hz(clock_30, CLOCK_50);
-	bullet(clock_30, KEY[3:0], bullet_state, bullet_x, bullet_y, ship_x, ship_y);
+	bullet(clock_30, direction, bullet_state, bullet_x, bullet_y, ship_x, ship_y);
 //	drawAsteroidXX(x, y, writeEn, clk, count);
 //	moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-	ship(KEY[3:0], clock_30, ship_x, ship_y);
+	ship(KEY[3:0], clock_30, ship_x, ship_y, direction);
+	draw(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
 	wire [3:0] h0;
 	wire [3:0] h1;
 	wire [3:0] h2;
 	wire [3:0] h3;
-	draw(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, h3, h2, h1, h0);
+	wire [3:0] h4;
+	wire [3:0] h5;
+	wire [3:0] h6;
+	wire [3:0] h7;
 	hex_display(HEX0, h0);
 	hex_display(HEX1, h1);
 	hex_display(HEX2, h2);
 	hex_display(HEX3, h3);
+	hex_display(HEX4, h4);
+	hex_display(HEX5, h5);
+	hex_display(HEX6, h6);
+	hex_display(HEX7, h7);
 endmodule
 
 
-module bullet(clock, ship_control, bullet_state, bullet_x, bullet_y, ship_x, ship_y);
+module bullet(clock, ship_direction, bullet_state, bullet_x, bullet_y, ship_x, ship_y);
 	input clock, bullet_state;
-	input [3:0] ship_control;
+	input [3:0] ship_direction;
 	input [159:0] ship_x;
 	input [119:0] ship_y;
 	reg [3:0] direction;
@@ -422,21 +430,22 @@ module bullet(clock, ship_control, bullet_state, bullet_x, bullet_y, ship_x, shi
 	output reg [119:0] bullet_y; 
 //	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
 	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
-	always@(posedge clock)
+	always @(posedge clock)
 	begin
-		if (bullet_state == 1'b1) begin
-			direction[3:0] <= ship_control[3:0];
-			bullet_x <= ship_x;
-			bullet_y <= ship_y;
+		// if the space is pressed, a bullet is drawn
+		if (bullet_state == 1'b1 && (bullet_y == 1'b0 || bullet_x == 1'b0)) begin
+			direction[3:0] = ship_direction[3:0];
+			bullet_x = ship_x;
+			bullet_y = ship_y;
 		end
 		if (direction == up) // up
-			bullet_y <= bullet_y << 2;
+			bullet_y = bullet_y << 2;
 		else if (direction == right) // right
-			bullet_x <= bullet_x >> 2;
+			bullet_x = bullet_x >> 2;
 		else if (direction == down) //down
-			bullet_y <= bullet_y >> 2;
+			bullet_y = bullet_y >> 2;
 		else if (direction == left) //left
-			bullet_x <= bullet_x << 2;
+			bullet_x = bullet_x << 2;
 	end	
 endmodule
 
@@ -474,37 +483,47 @@ module shoot_state(IN, OUT);
 	 end	
 endmodule
 
-module ship(ship_control, clock, ship_x, ship_y);
+module ship(ship_control, clock, ship_x, ship_y, direction);
 	input [3:0] ship_control;
 	input clock;
 	output reg [159:0] ship_x;
 	output reg [119:0] ship_y;
+	output reg [3:0] direction;
 	reg start;
 //	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
 	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
 	always@(posedge clock)
 	begin
-		if (ship_x == 1'b0) begin 
+		if (ship_x == 1'b0 && ship_y == 1'b0) begin 
 			ship_x[80] <= 1'b1;
 			ship_y[60] <= 1'b1;
 			start <= 1'b1;
+			direction <= up;
 		end
 		
 		else begin
-			if (ship_y[119] == 1'b0 && ship_control == up) // up
-				ship_y <= ship_y << 1;
-			else if (ship_x[0] == 1'b0 && ship_control == right) // right
-				ship_x <= ship_x >> 1;
-			else if (ship_y[0] == 1'b0 && ship_control == down) //down
-				ship_y <= ship_y >> 1;
-			else if (ship_x[159] == 1'b0 && ship_control == left) //left
-				ship_x <= ship_x << 1;		
+			if (ship_y[119] == 1'b0 && ship_control == up) begin // up
+				ship_y = ship_y << 1;
+				direction <= ship_control;
+			end
+			else if (ship_x[0] == 1'b0 && ship_control == right) begin// right
+				ship_x = ship_x >> 1;
+				direction <= ship_control;
+			end
+			else if (ship_y[0] == 1'b0 && ship_control == down) begin //down
+				ship_y = ship_y >> 1;
+				direction <= ship_control;
+			end
+			else if (ship_x[159] == 1'b0 && ship_control == left) begin //left
+				ship_x = ship_x << 1;
+				direction <= ship_control;
+			end
 		end
 	end
 	
 endmodule
 
-module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, HEX3, HEX2, HEX1, HEX0);
+module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
 	input clock50;
 	input [7:0] x;
 	input [6:0] y;
@@ -514,27 +533,17 @@ module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, 
 	input [119:0] bullet_y;
 	input [159:0] ship_x;
 	input [119:0] ship_y;
-	output [3:0] HEX3;
-	output [3:0] HEX2;
-	output [3:0] HEX1;
-	output [3:0] HEX0;
-	reg [15:0] count;
-	
-	assign HEX3 = count[15:12];
-	assign HEX2 = count[11:8];
-	assign HEX1 = count[7:4];
-	assign HEX0 = count[3:0];
 	always @(posedge clock50)
 	begin
 		writeEn <= 1;
 		//once we get the pixel position, check which colour it needs to send
-		if (x > 0 && ship_x[x-1] == 1'b1 && ship_y[y] == 1'b1)
+		if (x != 0 && ship_x[x-1] == 1'b1 && ship_y[y] == 1'b1)
 			colour <= 3'b101;
-		else if (x < 159 && ship_x[x+1] == 1'b1 && ship_y[y] == 1'b1)
+		else if (x != 159 && ship_x[x+1] == 1'b1 && ship_y[y] == 1'b1)
 			colour <= 3'b101;
-		else if (y > 0 && ship_x[x] == 1'b1 && ship_y[y-1] == 1'b1)
+		else if (y != 0 && ship_x[x] == 1'b1 && ship_y[y-1] == 1'b1)
 			colour <= 3'b101;
-		else if (y < 159 && ship_x[x] == 1'b1 && ship_y[y+1] == 1'b1)
+		else if (y != 159 && ship_x[x] == 1'b1 && ship_y[y+1] == 1'b1)
 			colour <= 3'b101;
 		else if (ship_x[x] == 1'b1 && ship_y[y] == 1'b1)
 			colour <= 3'b101;
@@ -545,6 +554,33 @@ module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, 
 	end
 
 endmodule 
+
+module asteroid(clock, in_direction, asteroid_state, asteroid_x, asteroid_y, origin_x, origin_y);
+	input clock;
+	input [3:0] in_direction;
+	input [159:0] origin_x;
+	input [119:0] origin_y;
+	reg [3:0] direction;
+	output reg [159:0] asteroid_x;
+	output reg [119:0] asteroid_y; 
+	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
+	always @(posedge clock)
+	begin
+		if (asteroid_x == 0 || asteroid_y == 0) begin
+			asteroid_x = origin_x;
+			asteroid_y = origin_y;
+			direction[3:0] = in_direction[3:0];
+		end
+		if (direction == up) // up
+			asteroid_y <= asteroid_y << 1;
+		else if (direction == right) // right
+			asteroid_x <= asteroid_x >> 1;
+		else if (direction == down) //down
+			asteroid_y <= asteroid_y >> 1;
+		else if (direction == left) //left
+			asteroid_x <= asteroid_x << 1;
+	end	
+endmodule
 
 // Screen size is 160x120
 //module drawAsteroidXX(x, y, writeEn, clk, count);
