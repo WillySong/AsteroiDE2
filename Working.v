@@ -306,10 +306,13 @@ module Working(
 	  input [3:0] KEY,                            // Reset key
 	  output [6:0] HEX0,
 	  output [6:0] HEX1,
+	  output [6:0] HEX2,
+	  output [6:0] HEX3,
 	  output [6:0] HEX4,
 	  output [6:0] HEX5,
 	  output [6:0] HEX6,
 	  output [6:0] HEX7,
+	  output [17:0] LEDR,
 		// The ports below are for the VGA output.  Do not change.
 		output VGA_CLK,   						//	VGA Clock
 		output VGA_HS,							//	VGA H_SYNC
@@ -336,6 +339,7 @@ module Working(
 	wire [159:0] ship_x;
 	wire [119:0] ship_y;
 //	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
+	assign resetn = SW[17];
 	
 //	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
 //	hex_display(HEX7, x[7:4]);
@@ -390,39 +394,49 @@ module Working(
 
 //	hex_display(ship_control, HEX0);
 	counter(CLOCK_50, x, y);
-	shoot_state(SW[0], bullet_state);
+	//shoot_state(SW[0], bullet_state);
 	clock30Hz(clock_30, CLOCK_50);
-	bullet(clock_30, KEY[3:0], bullet_state, bullet_x, bullet_y);
+	//bullet(clock_30, KEY[3:0], bullet_state, bullet_x, bullet_y);
 //	drawAsteroidXX(x, y, writeEn, clk, count);
 //	moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-	ship(KEY[3:0], CLOCK_50, ship_x, ship_y);
-	draw(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
+	ship(KEY[3:0], clock_30, ship_x, ship_y, SW[0]);
+	wire [3:0] h0;
+	wire [3:0] h1;
+	wire [3:0] h2;
+	wire [3:0] h3;
+	draw(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, h3, h2, h1, h0);
+	hex_display(HEX0, h0);
+	hex_display(HEX1, h1);
+	hex_display(HEX2, h2);
+	hex_display(HEX3, h3);
 endmodule
 
 
-module bullet(clock, ship_control, bullet_state, bullet_x, bullet_y);
-	input clock, bullet_state;
-	input [3:0] ship_control;
-	output reg [159:0] bullet_x;
-	output reg [119:0] bullet_y; 
-//	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
-	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
-	always@(posedge clock)
-	begin
-		if (bullet_state == 1'b1) begin
-			bullet_x[40] <= 1'b1;
-			bullet_y[40] <= 1'b1;
-		end
-		if (ship_control == up) // up
-			bullet_y <= bullet_y << 1;
-		else if (ship_control == right) // right
-			bullet_x <= bullet_x >> 1;
-		else if (ship_control == down) //down
-			bullet_y <= bullet_y >> 1;
-		else if (ship_control == left) //left
-			bullet_x <= bullet_x << 1;
-	end	
-endmodule
+//module bullet(clock, ship_control, bullet_state, bullet_x, bullet_y);
+//	input clock, bullet_state;
+//	input [3:0] ship_control;
+//	reg [3:0] direction;
+//	output reg [159:0] bullet_x;
+//	output reg [119:0] bullet_y; 
+////	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
+//	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
+//	always@(posedge clock)
+//	begin
+//		if (bullet_state == 1'b1) begin
+//			direction[3:0] <= ship_control[3:0];
+//			bullet_x[40] <= 1'b1;
+//			bullet_y[40] <= 1'b1;
+//		end
+//		if (direction == up) // up
+//			bullet_y <= bullet_y << 1;
+//		else if (direction == right) // right
+//			bullet_x <= bullet_x >> 1;
+//		else if (direction == down) //down
+//			bullet_y <= bullet_y >> 1;
+//		else if (direction == left) //left
+//			bullet_x <= bullet_x << 1;
+//	end	
+//endmodule
 
 module counter(clock, x, y);
 	input clock;
@@ -446,50 +460,50 @@ module counter(clock, x, y);
 	end
 endmodule
 
-module shoot_state(IN, OUT);
-	input IN;
-	output reg OUT;
-	always @(*)
-	 begin
-		case(IN)
-			1'b1: OUT = 1'b1;
-			default: OUT = 1'b0;
-		endcase//
-	 end	
-endmodule
+//module shoot_state(IN, OUT);
+//	input IN;
+//	output reg OUT;
+//	always @(*)
+//	 begin
+//		case(IN)
+//			1'b1: OUT = 1'b1;
+//			default: OUT = 1'b0;
+//		endcase//
+//	 end	
+//endmodule
 
-module ship(ship_control, clock, ship_x, ship_y);
+module ship(ship_control, clock, ship_x, ship_y, start);
 	input [3:0] ship_control;
-	input clock;
+	input clock, start;
 	output reg [159:0] ship_x;
 	output reg [119:0] ship_y;
-	reg start;
+	//output reg start;
 //	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
 	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
 	always@(posedge clock)
 	begin
-		if (start == 1'b0) begin
+		if (start == 1'b0) begin // ship_x == 0
 			ship_x[80] <= 1'b1;
 			ship_y[60] <= 1'b1;
-			start <= 1'b1;
+			//start <= 1'b1;
 		end
 		
 		else begin
-		if (ship_control == up) // up
-			ship_y <= ship_y << 1;
-		else if (ship_control == right) // right
-			ship_x <= ship_x >> 1;
-		else if (ship_control == down) //down
-			ship_y <= ship_y >> 1;
-		else if (ship_control == left) //left
-			ship_x <= ship_x << 1;		
+			if (ship_y[119] == 1'b0 && ship_control == up) // up
+				ship_y <= ship_y << 1;
+			else if (ship_x[0] == 1'b0 && ship_control == right) // right
+				ship_x <= ship_x >> 1;
+			else if (ship_y[0] == 1'b0 && ship_control == down) //down
+				ship_y <= ship_y >> 1;
+			else if (ship_x[159] == 1'b0 && ship_control == left) //left
+				ship_x <= ship_x << 1;		
 		end
 	end
 	
 endmodule
 
-module draw(clock, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
-	input clock;
+module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn, HEX3, HEX2, HEX1, HEX0);
+	input clock50;
 	input [7:0] x;
 	input [6:0] y;
 	output reg [2:0] colour;
@@ -498,24 +512,35 @@ module draw(clock, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
 	input [119:0] bullet_y;
 	input [159:0] ship_x;
 	input [119:0] ship_y;
-		
-	always@(posedge clock)
+	output [3:0] HEX3;
+	output [3:0] HEX2;
+	output [3:0] HEX1;
+	output [3:0] HEX0;
+	reg [15:0] count;
+	
+	assign HEX3 = count[15:12];
+	assign HEX2 = count[11:8];
+	assign HEX1 = count[7:4];
+	assign HEX0 = count[3:0];
+	always @(posedge clock50)
 	begin
 	//once we get the pixel position, check which colour it needs to send
 		if (ship_x[x] == 1'b1 && ship_y[y] == 1'b1) begin
-			colour <= 3'b111;
+			colour <= 3'b101;
 			writeEn <= 1'b1;
-		end
-		if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
-			colour <= 3'b111;
-			writeEn <= 1'b1;
+			count <= count + 1'b1;
 		end
 		else begin
-			colour <= 3'b000;
-			writeEn <= 1'b1;
+			if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
+				colour <= 3'b111;
+				writeEn <= 1'b1;
+			end
+			else begin
+				colour <= 3'b000;
+				writeEn <= 1'b1;
+			end
 		end
 	end
-	
 
 endmodule 
 
