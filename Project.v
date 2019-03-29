@@ -1,315 +1,18 @@
-// Module taken from Joe Armitage & co
-module ps2_rx
-	(
-		input wire clk, reset, 
-		input wire ps2d, ps2c, rx_en,    // ps2 data and clock inputs, receive enable input
-		output reg rx_done_tick,         // ps2 receive done tick
-		output wire [7:0] rx_data        // data received 
-	);
-	
-	// FSMD state declaration
-	localparam 
-		idle = 1'b0,
-		rx   = 1'b1;
-		
-	// internal signal declaration
-	reg state_reg, state_next;          // FSMD state register
-	reg [7:0] filter_reg;               // shift register filter for ps2c
-	wire [7:0] filter_next;             // next state value of ps2c filter register
-	reg f_val_reg;                      // reg for ps2c filter value, either 1 or 0
-	wire f_val_next;                    // next state for ps2c filter value
-	reg [3:0] n_reg, n_next;            // register to keep track of bit number 
-	reg [10:0] d_reg, d_next;           // register to shift in rx data
-	wire neg_edge;                      // negative edge of ps2c clock filter value
-	
-	// register for ps2c filter register and filter value
-	always @(posedge clk, posedge reset)
-		if (reset)
-			begin
-			filter_reg <= 0;
-			f_val_reg  <= 0;
-			end
-		else
-			begin
-			filter_reg <= filter_next;
-			f_val_reg  <= f_val_next;
-			end
-
-	// next state value of ps2c filter: right shift in current ps2c value to register
-	assign filter_next = {ps2c, filter_reg[7:1]};
-	
-	// filter value next state, 1 if all bits are 1, 0 if all bits are 0, else no change
-	assign f_val_next = (filter_reg == 8'b11111111) ? 1'b1 :
-			    (filter_reg == 8'b00000000) ? 1'b0 :
-			    f_val_reg;
-	
-	// negative edge of filter value: if current value is 1, and next state value is 0
-	assign neg_edge = f_val_reg & ~f_val_next;
-	
-	// FSMD state, bit number, and data registers
-	always @(posedge clk, posedge reset)
-		if (reset)
-			begin
-			state_reg <= idle;
-			n_reg <= 0;
-			d_reg <= 0;
-			end
-		else
-			begin
-			state_reg <= state_next;
-			n_reg <= n_next;
-			d_reg <= d_next;
-			end
-	
-	// FSMD next state logic
-	always @*
-		begin
-		
-		// defaults
-		state_next = state_reg;
-		rx_done_tick = 1'b0;
-		n_next = n_reg;
-		d_next = d_reg;
-		
-		case (state_reg)
-			
-			idle:
-				if (neg_edge & rx_en)                 // start bit received
-					begin
-					n_next = 4'b1010;             // set bit count down to 10
-					state_next = rx;              // go to rx state
-					end
-				
-			rx:                                           // shift in 8 data, 1 parity, and 1 stop bit
-				begin
-				if (neg_edge)                         // if ps2c negative edge...
-					begin
-					d_next = {ps2d, d_reg[10:1]}; // sample ps2d, right shift into data register
-					n_next = n_reg - 1;           // decrement bit count
-					end
-			
-				if (n_reg==0)                         // after 10 bits shifted in, go to done state
-                                        begin
-					 rx_done_tick = 1'b1;         // assert dat received done tick
-					 state_next = idle;           // go back to idle
-					 end
-				end
-		endcase
-		end
-		
-	assign rx_data = d_reg[8:1]; // output data bits 
-endmodule
-
-// Module taken from Joe Armitage & co
-module keyboard
-
-    (
-	input wire clk, reset,
-        input wire ps2d, ps2c,               // ps2 data and clock lines
-        output wire [7:0] scan_code,         // scan_code received from keyboard to process
-        output wire scan_code_ready,         // signal to outer control system to sample scan_code
-        output wire letter_case_out          // output to determine if scan code is converted to lower or upper ascii code for a key
-    );
-	
-    // constant declarations
-    localparam  BREAK    = 8'hf0, // break code
-                SHIFT1   = 8'h12, // first shift scan
-                SHIFT2   = 8'h59, // second shift scan
-                CAPS     = 8'h58; // caps lock
-
-    // FSM symbolic states
-    localparam [2:0] lowercase          = 3'b000, // idle, process lower case letters
-                     ignore_break       = 3'b001, // ignore repeated scan code after break code -F0- reeived
-                     shift              = 3'b010, // process uppercase letters for shift key held
-                     ignore_shift_break = 3'b011, // check scan code after F0, either idle or go back to uppercase
-		     capslock           = 3'b100, // process uppercase letter after capslock button pressed
-		     ignore_caps_break  = 3'b101; // check scan code after F0, either ignore repeat, or decrement caps_num
-                     
-               
-    // internal signal declarations
-    reg [2:0] state_reg, state_next;           // FSM state register and next state logic
-    wire [7:0] scan_out;                       // scan code received from keyboard
-    reg got_code_tick;                         // asserted to write current scan code received to FIFO
-    wire scan_done_tick;                       // asserted to signal that ps2_rx has received a scan code
-    reg letter_case;                           // 0 for lower case, 1 for uppercase, outputed to use when converting scan code to ascii
-    reg [7:0] shift_type_reg, shift_type_next; // register to hold scan code for either of the shift keys or caps lock
-    reg [1:0] caps_num_reg, caps_num_next;     // keeps track of number of capslock scan codes received in capslock state (3 before going back to lowecase state)
-   
-    // instantiate ps2 receiver
-    ps2_rx ps2_rx_unit (.clk(clk), .reset(reset), .rx_en(1'b1), .ps2d(ps2d), .ps2c(ps2c), .rx_done_tick(scan_done_tick), .rx_data(scan_out));
-	
-	// FSM stat, shift_type, caps_num register 
-    always @(posedge clk, posedge reset)
-        if (reset)
-			begin
-			state_reg      <= lowercase;
-			shift_type_reg <= 0;
-			caps_num_reg   <= 0;
-			end
-        else
-			begin    
-                        state_reg      <= state_next;
-			shift_type_reg <= shift_type_next;
-			caps_num_reg   <= caps_num_next;
-			end
-			
-    //FSM next state logic
-    always @*
-        begin
-       
-        // defaults
-        got_code_tick   = 1'b0;
-	letter_case     = 1'b0;
-	caps_num_next   = caps_num_reg;
-        shift_type_next = shift_type_reg;
-        state_next      = state_reg;
-       
-        case(state_reg)
-			
-	    // state to process lowercase key strokes, go to uppercase state to process shift/capslock
-            lowercase:
-                begin  
-                if(scan_done_tick)                                                                    // if scan code received
-		    begin
-		    if(scan_out == SHIFT1 || scan_out == SHIFT2)                                      // if code is shift    
-		        begin
-			shift_type_next = scan_out;                                                   // record which shift key was pressed
-			state_next = shift;                                                           // go to shift state
-			end
-					
-		    else if(scan_out == CAPS)                                                         // if code is capslock
-		        begin
-			caps_num_next = 2'b11;                                                        // set caps_num to 3, num of capslock scan codes to receive before going back to lowecase
-			state_next = capslock;                                                        // go to capslock state
-			end
-
-		    else if (scan_out == BREAK)                                                       // else if code is break code
-			state_next = ignore_break;                                                    // go to ignore_break state
-	 
-		    else                                                                              // else if code is none of the above...            
-			got_code_tick = 1'b1;                                                         // assert got_code_tick to write scan_out to FIFO
-		    end	
-                end
-            
-	    // state to ignore repeated scan code after break code FO received in lowercase state
-            ignore_break:
-                begin
-                if(scan_done_tick)                                                                    // if scan code received, 
-                    state_next = lowercase;                                                           // go back to lowercase state
-                end
-            
-	    // state to process scan codes after shift received in lowercase state
-            shift:
-                begin
-                letter_case = 1'b1;                                                                   // routed out to convert scan code to upper value for a key
-               
-                if(scan_done_tick)                                                                    // if scan code received,
-			begin
-			if(scan_out == BREAK)                                                             // if code is break code                                            
-			    state_next = ignore_shift_break;                                              // go to ignore_shift_break state to ignore repeated scan code after F0
-
-			else if(scan_out != SHIFT1 && scan_out != SHIFT2 && scan_out != CAPS)             // else if code is not shift/capslock
-			    got_code_tick = 1'b1;                                                         // assert got_code_tick to write scan_out to FIFO
-			end
-		end
-				
-	     // state to ignore repeated scan code after break code F0 received in shift state 
-	     ignore_shift_break:
-	         begin
-		 if(scan_done_tick)                                                                // if scan code received
-		     begin
-		     if(scan_out == shift_type_reg)                                                // if scan code is shift key initially pressed
-		         state_next = lowercase;                                                   // shift/capslock key unpressed, go back to lowercase state
-		     else                                                                          // else repeated scan code received, go back to uppercase state
-			 state_next = shift;
-		     end
-		 end  
-				
-	     // state to process scan codes after capslock code received in lowecase state
-	     capslock:
-	         begin
-		 letter_case = 1'b1;                                                               // routed out to convert scan code to upper value for a key
-					
-		 if(caps_num_reg == 0)                                                             // if capslock code received 3 times, 
-		     state_next = lowercase;                                                   // go back to lowecase state
-						
-		 if(scan_done_tick)                                                                // if scan code received
-		     begin 
-		     if(scan_out == CAPS)                                                          // if code is capslock, 
-		         caps_num_next = caps_num_reg - 1;                                         // decrement caps_num
-						
-		     else if(scan_out == BREAK)                                                    // else if code is break, go to ignore_caps_break state
-			 state_next = ignore_caps_break;
-						
-		     else if(scan_out != SHIFT1 && scan_out != SHIFT2)                             // else if code isn't a shift key
-			 got_code_tick = 1'b1;                                                     // assert got_code_tick to write scan_out to FIFO
-		     end
-		 end
-				
-		 // state to ignore repeated scan code after break code F0 received in capslock state 
-		 ignore_caps_break:
-		     begin
-		     if(scan_done_tick)                                                                // if scan code received
-		         begin
-			 if(scan_out == CAPS)                                                          // if code is capslock
-			     caps_num_next = caps_num_reg - 1;                                         // decrement caps_num
-			 state_next = capslock;                                                        // return to capslock state
-			 end
-		     end
-					
-        endcase
-        end
-		
-    // output, route letter_case to output to use during scan to ascii code conversion
-    assign letter_case_out = letter_case; 
-	
-    // output, route got_code_tick to out control circuit to signal when to sample scan_out 
-    assign scan_code_ready = got_code_tick;
-	
-    // route scan code data out
-    assign scan_code = scan_out;
-	
-endmodule
-
-// Module modified from key2ascii by Joe Armitage & co
-module key2ascii
-    (
-        input wire letter_case,
-        input wire [7:0] scan_code,
-        output reg [3:0] ship_control
-    );
-    
-always @*
-  begin
-  case(scan_code)
-	/* Player movement*/
-	8'h1c: ship_control = 4'd1;   // a
-	8'h23: ship_control = 4'd2;   // d
-	8'h1b: ship_control = 4'd3;   // s
-	8'h1d: ship_control = 4'd4;   // w
-	8'h29: ship_control = 4'd5;   // space
-	/* Player movement alternates for possible player 2 implementation*/
-	8'h75: ship_control = 4'd6;   // DC1: Up Arrow
-	8'h6B: ship_control = 4'd7;   // DC2: Left Arrow
-	8'h72: ship_control = 4'd8;   // DC3: Down Arrow
-	8'h74: ship_control = 4'd9;   // DC4: Right Arrow
-	default: ship_control = 4'd4; // default up
-  endcase
-  end
-endmodule
-
 module Project(
 	  input PS2_KBCLK,                            // Keyboard clock
 	  input PS2_KBDAT,                            // Keyboard input data
 	  input CLOCK_50,                             //    On Board 50 MHz
 	  input [17:0] SW,
-	  input [0:0] KEY,                            // Reset key
+	  input [3:0] KEY,                            // Reset key
 	  output [6:0] HEX0,
 	  output [6:0] HEX1,
+	  output [6:0] HEX2,
+	  output [6:0] HEX3,
 	  output [6:0] HEX4,
 	  output [6:0] HEX5,
 	  output [6:0] HEX6,
 	  output [6:0] HEX7,
+	  //output [17:0] LEDR,
 		// The ports below are for the VGA output.  Do not change.
 		output VGA_CLK,   						//	VGA Clock
 		output VGA_HS,							//	VGA H_SYNC
@@ -327,7 +30,7 @@ module Project(
 	wire [6:0] y;
 	wire writeEn;
 	wire [3:0] count;
-	wire clock_30;
+	wire clock_30, a_clock;
 	wire resetn;
 	wire [1:0] bullet_state;
 	wire [3:0] direction;
@@ -336,13 +39,14 @@ module Project(
 	wire [159:0] ship_x;
 	wire [119:0] ship_y;
 //	assign clk = !KEY[0] || !KEY[1] || !KEY[2] || !KEY[3];
+	assign resetn = SW[17];
 	
 //	moveAsteroid(x, y, x, y, SW[1:0], SW[3:2], clk);
 //	hex_display(HEX7, x[7:4]);
 //	hex_display(HEX6, x[3:0]);
 //	hex_display(HEX5, y[6:4]);
 //	hex_display(HEX4, y[3:0]);
-	assign resetn = KEY[0];
+//	assign resetn = KEY[0];
 
 	// Create an Instance of a VGA controller - there can be only one!
 	// Define the number of colours as well as the initial background
@@ -388,39 +92,87 @@ module Project(
 		.letter_case_out(kb_letter_case)
 	);
 
+	reg [4:0] a1_state;
+	always @(posedge a_clock) begin
+		if (a1_state <= 5'd16) begin
+			a1_state <= a1_state + 1;
+		end
+		else begin
+			a1_state <= 0;
+		end
+	end
 //	hex_display(ship_control, HEX0);
 	counter(CLOCK_50, x, y);
-	shoot_state(ship_control, bullet_state);
+	shoot_state(SW[0] || SW[16], bullet_state);
 	clock30Hz(clock_30, CLOCK_50);
-//	draw(bullet_state, bullet_x, bullet_y, ship_x, ship_y, draw_x, draw_y);
-	bullet(clock_30, direction, bullet_state, bullet);
-//	drawAsteroidXX(x, y, writeEn, clk, count);
-//	moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-	ship(ship_control, CLOCK_50, ship);
-	start(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
+	asteroid_clock(a_clock, CLOCK_50);
+	ship(KEY[3:0], clock_30, ship_x, ship_y, direction);
+	bullet(clock_30, direction, bullet_state, bullet_x, bullet_y, ship_x, ship_y);
+	wire [159:0] a1_x, a2_x, a3_x, a4_x, a5_x, a6_x, a7_x, a8_x;
+	wire [119:0] a1_y, a2_y, a3_y, a4_y, a5_y, a6_y, a7_y, a8_y;
+	asteroid01(clock_30, a1_hit, a1_state, a1_x, a1_y);
+	asteroid02(clock_30, a2_hit, a1_state, a2_x, a2_y);
+	asteroid03(clock_30, a3_hit, a1_state, a3_x, a3_y);
+	asteroid04(clock_30, a4_hit, a1_state, a4_x, a4_y);
+	asteroid05(clock_30, a5_hit, a1_state, a5_x, a5_y);
+	asteroid06(clock_30, a6_hit, a1_state, a6_x, a6_y);
+	asteroid07(clock_30, a7_hit, a1_state, a7_x, a7_y);
+	asteroid08(clock_30, a8_hit, a1_state, a8_x, a8_y);
+	draw(CLOCK_50, x, y, bullet_x, bullet_y, ship_x, ship_y, a1_x, a1_y, a2_x, a2_y, a3_x, a3_y, a4_x, a4_y, a5_x, a5_y, a6_x, a6_y, a7_x, a7_y, a8_x, a8_y, direction, colour, writeEn);
+	wire alive;
+	reg a1_hit, a2_hit, a3_hit, a4_hit, a5_hit, a6_hit, a7_hit, a8_hit;
+//	asteroid_hit_checker(a1_hit, a1_x, a1_y, bullet_x, bullet_y, CLOCK_50);
+//	always (*)
+//	begin
+//		if (a1_hit == 1)
+//			a1_hit = 0;
+//	end
+	
+	wire [3:0] h0;
+	wire [3:0] h1;
+	wire [3:0] h2;
+	wire [3:0] h3;
+	wire [3:0] h4;
+	wire [3:0] h5;
+	wire [3:0] h6;
+	wire [3:0] h7;
+	hex_display(HEX0, h0);
+	hex_display(HEX1, h1);
+	hex_display(HEX2, h2);
+	hex_display(HEX3, h3);
+	hex_display(HEX4, h4);
+	hex_display(HEX5, h5);
+	hex_display(HEX6, h6);
+	hex_display(HEX7, h7);
 endmodule
 
 
-module bullet(clock, direction, bullet_state, bullet_x, bullet_y);
+module bullet(clock, ship_direction, bullet_state, bullet_x, bullet_y, ship_x, ship_y);
 	input clock, bullet_state;
-	input [3:0] direction;
+	input [3:0] ship_direction;
+	input [159:0] ship_x;
+	input [119:0] ship_y;
+	reg [3:0] direction;
 	output reg [159:0] bullet_x;
 	output reg [119:0] bullet_y; 
-	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
-	always@(posedge clock)
+//	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
+	localparam up = 4'b0111, right = 4'b1101, down = 4'b1011, left = 4'b1110; // testing using key
+	always @(posedge clock)
 	begin
-		if (bullet_state == 1'b1) begin
-			bullet_x[40] = 1'b1;
-			bullet_y[40] = 1'b1;
+		// if the space is pressed, a bullet is drawn
+		if (bullet_state == 1'b1 && (bullet_y == 1'b0 || bullet_x == 1'b0)) begin
+			direction[3:0] = ship_direction[3:0];
+			bullet_x = ship_x;
+			bullet_y = ship_y;
 		end
-//		if (direction == up) // up
-//			bullet_y <= bullet_y << 1;
-//		else if (direction == right) // right
-//			bullet_x <= bullet_x >> 1;
-//		else if (direction == down) //down
-//			bullet_y <= bullet_y >> 1;
-//		else if (direction == left) //left
-//			bullet_x <= bullet_x << 1;
+		if (direction == up) // up
+			bullet_y = bullet_y >> 2;
+		else if (direction == right) // right
+			bullet_x = bullet_x << 2;
+		else if (direction == down) //down
+			bullet_y = bullet_y << 2;
+		else if (direction == left) //left
+			bullet_x = bullet_x >> 2;
 	end	
 endmodule
 
@@ -447,129 +199,185 @@ module counter(clock, x, y);
 endmodule
 
 module shoot_state(IN, OUT);
-	input [3:0] IN;
+	input IN;
 	output reg OUT;
 	always @(*)
 	 begin
-		case(IN[3:0])
-			4'b0101: OUT = 1'b1;
+		case(IN)
+			1'b1: OUT = 1'b1;
 			default: OUT = 1'b0;
 		endcase//
 	 end	
 endmodule
 
-module ship(ship_control, clock, ship_x, ship_y);
+module ship(ship_control, clock, ship_x, ship_y, direction);
 	input [3:0] ship_control;
 	input clock;
 	output reg [159:0] ship_x;
 	output reg [119:0] ship_y;
+	output reg [3:0] direction;
 	reg start;
-	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
+	localparam up = 4'b0111, down = 4'b1011, right = 4'b1101, left = 4'b1110; // testing using key
 	always@(posedge clock)
 	begin
-		if (start == 1'b0) begin
+		if (ship_x == 1'b0 && ship_y == 1'b0) begin 
 			ship_x[80] <= 1'b1;
 			ship_y[60] <= 1'b1;
 			start <= 1'b1;
+			direction <= up;
 		end
 		
 		else begin
-		if (ship_control == up) // up
-			ship_y <= ship_y << 1;
-		else if (ship_control == right) // right
-			ship_x <= ship_x >> 1;
-		else if (ship_control == down) //down
-			ship_y <= ship_y >> 1;
-		else if (ship_control == left) //left
-			ship_x <= ship_x << 1;		
+			if (ship_y[0] == 1'b0 && ship_control == up) begin // up
+				ship_y = ship_y >> 1;
+				direction <= ship_control;
+			end
+			else if (ship_x[159] == 1'b0 && ship_control == right) begin// right
+				ship_x = ship_x << 1;
+				direction <= ship_control;
+			end
+			else if (ship_y[119] == 1'b0 && ship_control == down) begin //down
+				ship_y = ship_y << 1;
+				direction <= ship_control;
+			end
+			else if (ship_x[0] == 1'b0 && ship_control == left) begin //left
+				ship_x = ship_x >> 1;
+				direction <= ship_control;
+			end
 		end
 	end
 	
 endmodule
 
-module start(clock, x, y, bullet_x, bullet_y, ship_x, ship_y, colour, writeEn);
-	input clock;
+module draw(clock50, x, y, bullet_x, bullet_y, ship_x, ship_y,  a1_x, a1_y, a2_x, a2_y, a3_x, a3_y, a4_x, a4_y, a5_x, a5_y, a6_x, a6_y, a7_x, a7_y, a8_x, a8_y, direction, colour, writeEn);
+	input clock50;
 	input [7:0] x;
 	input [6:0] y;
-	output reg [2:0] colour;
-	output reg writeEn;
 	input [159:0] bullet_x;
 	input [119:0] bullet_y;
 	input [159:0] ship_x;
 	input [119:0] ship_y;
-		
-	always@(posedge clock)
+	input [159:0] a1_x, a2_x, a3_x, a4_x, a5_x, a6_x, a7_x, a8_x;
+	input [119:0] a1_y, a2_y, a3_y, a4_y, a5_y, a6_y, a7_y, a8_y;
+	input [3:0] direction;
+	output reg [2:0] colour;
+	output reg writeEn;
+//	localparam up = 4'b0100, right = 4'b0010, down = 4'b0011, left = 4'b0001;
+	localparam up = 4'b0111, down = 4'b1011, right = 4'b1101, left = 4'b1110; // testing using key
+	always @(posedge clock50)
 	begin
-	//once we get the pixel position, check which colour it needs to send
-		if (ship_x[x] == 1'b1 && ship_y[y] == 1'b1) begin
-			colour <= 3'b111;
-			writeEn <= 1'b1;
+		writeEn <= 1;
+		//once we get the pixel position, check which colour it needs to send
+		// Ship: 123 |					X	 X 	XX 	X X	 XX
+		//       456 |					X	XXX	 XX	XXX	XX
+		//       789 V lower y		X	X X	XX		 X 	 XX
+		//lower x-->						up		rig	dow	lef
+		// 1
+		if (x != 119 && ship_x[x+1] == 1'b1 && y != 159 && ship_y[y+1] == 1'b1) begin
+			if (direction == right || direction == down)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
 		end
-		if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1) begin
-			colour <= 3'b111;
-			writeEn <= 1'b1;
+		// 2
+		else if (y != 159 && ship_x[x] == 1'b1 && ship_y[y+1] == 1'b1) begin
+			if (direction != down)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
 		end
-		else begin
+		// 3
+		else if (x != 0 && ship_x[x-1] == 1'b1 && y != 159 && ship_y[y+1] == 1'b1) begin
+			if (direction == left || direction == down)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// 4
+		else if (x != 159 && ship_x[x+1] == 1'b1 && ship_y[y] == 1'b1) begin
+			if (direction != right)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// 5
+		else if (ship_x[x] == 1'b1 && ship_y[y] == 1'b1)
+			colour <= 3'b111;
+		// 6
+		else if (x != 0 && ship_x[x-1] == 1'b1 && ship_y[y] == 1'b1) begin
+			if (direction != left)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// 7
+		else if (x != 119 && ship_x[x+1] == 1'b1 && y != 0 && ship_y[y-1] == 1'b1) begin
+			if (direction == right || direction == up)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// 8
+		else if (y != 0 && ship_x[x] == 1'b1 && ship_y[y-1] == 1'b1) begin
+			if (direction != up)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// 9
+		else if (x != 0 && ship_x[x-1] == 1'b1 && y != 0 && ship_y[y-1] == 1'b1) begin
+			if (direction == left || direction == up)
+				colour <= 3'b111;
+			else
+				colour <= 3'b000;
+		end
+		// Bullet, a lot easier to render
+		else if (bullet_x[x] == 1'b1 && bullet_y[y] == 1'b1)
+			colour <= 3'b101;
+		// Asteroid		XXX  X   XX XX 
+		//             XXX XXX XXX XXX
+		//              X  XXX  XX XX 
+		//					up  dow rig lef
+		// 1
+		else if (x != 119 && y != 159 && ((a4_x[x+1] == 1 && a4_y[y+1] == 1) || (a5_x[x+1] == 1 && a5_y[y+1] == 1) || (a6_x[x+1] == 1 && a6_y[y+1] == 1) || (a7_x[x+1] == 1 && a7_y[y+1] == 1)))
+			colour <= 3'b101;
+		// 2
+		else if (y != 159 && ((a1_x[x] == 1 && a1_y[y+1] == 1) || (a2_x[x] == 1 && a2_y[y+1] == 1) || (a3_x[x] == 1 && a3_y[y+1] == 1) || (a4_x[x] == 1 && a4_y[y+1] == 1) || (a5_x[x] == 1 && a5_y[y+1] == 1) || (a6_x[x] == 1 && a6_y[y+1] == 1) || (a7_x[x] == 1 && a7_y[y+1] == 1) || (a8_x[x] == 1 && a8_y[y+1] == 1)))
+			colour <= 3'b101;
+		// 3
+		else if (x != 0 && y != 159 && ((a5_x[x-1] == 1 && a5_y[y+1] == 1) || (a6_x[x-1] == 1 && a6_y[y+1] == 1) || (a7_x[x-1] == 1 && a7_y[y+1] == 1) || (a8_x[x-1] == 1 && a8_y[y+1] == 1)))
+			colour <= 3'b101;
+		// 4
+		else if (x != 159 && ((a1_x[x+1] == 1 && a1_y[y] == 1) || (a2_x[x+1] == 1 && a2_y[y] == 1) || (a3_x[x+1] == 1 && a3_y[y] == 1) || (a4_x[x+1] == 1 && a4_y[y] == 1) || (a5_x[x+1] == 1 && a5_y[y] == 1) || (a6_x[x+1] == 1 && a6_y[y] == 1) || (a7_x[x+1] == 1 && a7_y[y] == 1) || (a8_x[x+1] == 1 && a8_y[y] == 1)))
+			colour <= 3'b101;
+		// 5
+		else if ((a1_x[x] == 1 && a1_y[y] == 1) || (a2_x[x] == 1 && a2_y[y] == 1) || (a3_x[x] == 1 && a3_y[y] == 1) || (a4_x[x] == 1 && a4_y[y] == 1) || (a5_x[x] == 1 && a5_y[y] == 1) || (a6_x[x] == 1 && a6_y[y] == 1) || (a7_x[x] == 1 && a7_y[y] == 1) || (a8_x[x] == 1 && a8_y[y] == 1))
+			colour <= 3'b101;
+		// 6
+		else if (x != 0 && ((a1_x[x-1] == 1 && a1_y[y] == 1) || (a2_x[x-1] == 1 && a2_y[y] == 1) || (a3_x[x-1] == 1 && a3_y[y] == 1) || (a4_x[x-1] == 1 && a4_y[y] == 1) || (a5_x[x-1] == 1 && a5_y[y] == 1) || (a6_x[x-1] == 1 && a6_y[y] == 1) || (a7_x[x-1] == 1 && a7_y[y] == 1) || (a8_x[x-1] == 1 && a8_y[y] == 1)))
+			colour <= 3'b101;
+		// 7
+		else if (x != 119 && y != 0 && ((a1_x[x+1] == 1 && a1_y[y-1] == 1) || (a2_x[x+1] == 1 && a2_y[y-1] == 1) || (a3_x[x+1] == 1 && a3_y[y-1] == 1) || (a4_x[x+1] == 1 && a4_y[y-1] == 1)))
+			colour <= 3'b101;
+		// 8
+		else if (y != 0 && ((a1_x[x] == 1 && a1_y[y-1] == 1) || (a2_x[x] == 1 && a2_y[y-1] == 1) || (a3_x[x] == 1 && a3_y[y-1] == 1) || (a4_x[x] == 1 && a4_y[y-1] == 1) || (a5_x[x] == 1 && a5_y[y-1] == 1) || (a6_x[x] == 1 && a6_y[y-1] == 1) || (a7_x[x] == 1 && a7_y[y-1] == 1) || (a8_x[x] == 1 && a8_y[y-1] == 1)))
+			colour <= 3'b101;
+		// 9
+		else if (x != 0 && y != 0 && ((a1_x[x-1] == 1 && a1_y[y-1] == 1) || (a2_x[x-1] == 1 && a2_y[y-1] == 1) || (a3_x[x-1] == 1 && a3_y[y-1] == 1) || (a8_x[x-1] == 1 && a8_y[y-1] == 1)))
+			colour <= 3'b101;
+		// None
+		else
 			colour <= 3'b000;
-			writeEn <= 1'b1;
-		end
 	end
-	
-
 endmodule 
 
-// Screen size is 160x120
-//module drawAsteroidXX(x, y, writeEn, clk, count);
-//	output reg [7:0] x;
-//	output reg [6:0] y;
-//	output reg writeEn;
-//	input clk;
-//	input [3:0] count;
-//	always@ (posedge clk)
+//module asteroid_hit_checker(hit, ax, ay, bx, by, clock);
+//	output hit;
+//	input [159:0] ax, bx;
+//	input [119:0] ay, by;
+//	input clock;
+//	always @(posedge clock)
 //	begin
-//		case (count[3:0])
-//			default: writeEn = 1'b1;
-//		endcase
+//		hit = (ax == bx && ay == by) || ;
 //	end
 //endmodule
-//
-//module moveAsteroid(new_x, new_y, x, y, direction, speed, clk);
-//	output reg [7:0] new_x;
-//	output reg [6:0] new_y;
-//	input [7:0] x;
-//	input [6:0] y;
-//	input [1:0] direct	input [119:0] bullet_y;ion;
-//	input [1:0] speed;
-//	input clk;
-//	always@(posedge clk)
-//	begin
-//	case (direction[1:0])
-//		2'b00:
-//		begin 
-//			new_y <= y + speed;
-//			new_x <= x;
-//		end
-//		2'b01:
-//		begin
-//			new_y <= y - speed;
-//			new_x <= x;
-//		end
-//		2'b11:
-//		begin
-//			new_x <= x + speed;
-//			new_y <= y;
-//		end
-//		2'b10:
-//		begin
-//			new_x <= x - speed;
-//			new_y <= y;
-//		end
-//		default:[159:0] bullet_x;
-//		begin
-//			new_x <= x;
-//			new_y <= y;
-//		end
-//	endcase
-//	end
-//endmodule
-//

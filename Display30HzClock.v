@@ -1,5 +1,21 @@
 `timescale 1ns / 1ns // `timescale time_unit/time_precision
 
+module asteroid_clock(out, clock);
+	output out;
+	input clock;
+	reg [27:0] q;
+	
+	always@(posedge clock)     // triggered every time clock rises
+	begin
+		if(q == 28'd69999999)    // reset at slower hz
+			q <= 0;                 // reset q to 0
+		else  // ...otherwise update q (only when Enable is 1)
+			q <= q + 1'b1;          // increment q
+	end
+	
+	assign out = q == 0;
+endmodule
+
 module clock30Hz(out, clock);
 	output out;
 	input clock;
