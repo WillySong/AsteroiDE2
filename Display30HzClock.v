@@ -104,12 +104,19 @@ module hex_display(OUT, IN);
 	end
 endmodule
 	
-module timer_display(dig0, dig1, dig2, dig3, clk);
+module timer_display(dig0, dig1, dig2, dig3, game_state, clk);
 	input clk;
+	input game_state;
 	output reg [3:0] dig0, dig1, dig2, dig3;		
 			
 	always@(posedge clk) begin
-		if (dig0 == 4'd9 && dig1 != 4'd9) begin
+		if (game_state == 1) begin
+			dig0 <= 0;
+			dig1 <= 0;
+			dig2 <= 0;
+			dig3 <= 0;
+		end
+		else if (dig0 == 4'd9 && dig1 != 4'd9) begin
 			dig0 <= 0;
 			dig1 <= dig1 + 1;
 		end
