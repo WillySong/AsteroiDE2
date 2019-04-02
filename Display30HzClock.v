@@ -32,13 +32,27 @@ module clock30Hz(out, clock);
 	assign out = q == 0;
 endmodule
 
+module clock1sec(out, clock_30);
+	input clock_30;
+	output reg out;
+	
+	wire [5:0] count_30;
+	countto30(count_30, clock_30);
+	
+	always@(*)
+		if(count_30 == 6'd30)
+			out <= 1'b1;
+		else
+			out <= 0;
+endmodule
+
 module countto30(out, clock);
 	output reg [5:0] out;
 	input clock;
 
 	always@ (posedge clock)     // triggered every time clock rises
 	begin
-		if(out == 4'd30)    // ...otherwise if q is the maximum counter value
+		if(out == 6'd30)    // ...otherwise if q is the maximum counter value
 			out <= 0;                 // reset q to 0
 		else  // ...otherwise update q (only when Enable is 1)
 			out <= out + 1'b1;          // increment q
@@ -90,3 +104,73 @@ module hex_display(OUT, IN);
 	end
 endmodule
 	
+module timer_display(dig0, dig1, dig2, dig3, game_state, clk);
+	input clk;
+	input game_state;
+	output reg [3:0] dig0, dig1, dig2, dig3;		
+			
+	always@(posedge clk) begin
+		if (game_state == 1) begin
+			dig0 <= 0;
+			dig1 <= 0;
+			dig2 <= 0;
+			dig3 <= 0;
+		end
+		else if (dig0 == 4'd9 && dig1 != 4'd9) begin
+			dig0 <= 0;
+			dig1 <= dig1 + 1;
+		end
+		else if (dig1 == 4'd9 && dig0 == 4'd9 && dig2 != 4'd9) begin
+			dig0 <= 4'd0;
+			dig1 <= 4'd0;
+			dig2 <= dig2 + 1;
+		end
+		else if (dig2 == 4'd9 && dig1 == 4'd9 && dig0 == 4'd9 && dig3 != 4'd9) begin
+			dig0 <=
+			dig2 <= 0;
+			dig3 <= dig3 + 1;
+		end
+		else if (dig3 == 4'd9 && dig2 == 4'd9 && dig1 == 4'd9 && dig0 == 4'd9) begin
+			dig0 <= 0;
+			dig1 <= 0;
+			dig2 <= 0;
+			dig3 <= 0;
+		end
+		else
+			dig0 <= dig0 + 1;
+	end 
+endmodule 
+
+module score_display(dig0, dig1, game_state, hit);
+	input hit;
+	input game_state;
+	output reg [3:0] dig0, dig1;		
+			
+	always@(posedge hit) begin
+		if (game_state == 1) begin
+			dig0 <= 0;
+			dig1 <= 0;
+		end
+		else if (dig0 == 4'd9 && dig1 != 4'd9) begin
+			dig0 <= 0;
+			dig1 <= dig1 + 1;
+		end
+		else if (dig1 == 4'd9 && dig0 == 4'd9) begin
+			dig0 <= 4'd0;
+			dig1 <= 4'd0;
+		end
+		else
+			dig0 <= dig0 + 1;
+	end 
+endmodule
+
+
+module game_over_hold(hold, game_state, clk);
+	input clk, game_state;
+	output reg hold;
+	
+	always@(*) begin
+		if(game_state) hold <= 1;
+		else if (clk == 1) hold <= 0;
+	end 
+endmodule 

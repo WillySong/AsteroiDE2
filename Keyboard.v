@@ -287,13 +287,8 @@ always @*
 	8'h23: ship_control = 4'd2;   // d
 	8'h1b: ship_control = 4'd3;   // s
 	8'h1d: ship_control = 4'd4;   // w
-	8'h29: ship_control = 4'd5;   // space
-	/* Player movement alternates for possible player 2 implementation*/
-	8'h75: ship_control = 4'd6;   // DC1: Up Arrow
-	8'h6B: ship_control = 4'd7;   // DC2: Left Arrow
-	8'h72: ship_control = 4'd8;   // DC3: Down Arrow
-	8'h74: ship_control = 4'd9;   // DC4: Right Arrow
-	default: ship_control = 4'd4; // default up
+	8'h29: ship_control = 4'd5;   // stop
+	default: ship_control = 4'd5; // default stop
   endcase
   end
 endmodule
