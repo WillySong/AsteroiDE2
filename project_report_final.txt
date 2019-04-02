@@ -1,0 +1,94 @@
+﻿CSCB58 Project Report: Winter 2019
+
+Team Member A
+-------------
+First Name: William
+Last Name: Song
+Student Number: 1004152070
+UofT E-mail Address: willy.song@mail.utoronto.ca
+
+
+Team Member B
+-------------
+First Name: Abhivyakti
+Last Name: Ahuja
+Student Number: 1004599696
+UofT E-mail Address: abhivyakti.ahuja@mail.utoronto.ca
+
+Team Member C (Optional)
+-------------
+First Name: Rebecca
+Last Name: Reid
+Student Number: 1003429587
+UofT E-mail Address: rebecca.reid@mail.utoronto.ca
+
+Team Member D (Optional)
+-------------
+First Name: Guikang
+Last Name: Zhong
+Student Number: 1004304807
+UofT E-mail Address: guikang.zhong@mail.utoronto.ca
+
+
+Project Plan
+--------
+
+Project Title:
+Asteroids
+
+Provide a one paragraph description of your project:
+Re-create the classic cabinet arcade game Asteroids. In Asteroids, the player controls a ship that starts in the middle of the screen. Around them are asteroids that move across the screen along a linear path. If the player collides with one of these asteroids, they lose their ship and the game. The player has the capability to turn their ship, move it around the screen, and for the ship to destroy asteroids.
+
+What is your plan for the first week?
+Working display
+Create Player
+	Sprite (maybe?)
+	Orientation based on direction of joystick
+		Joystick noise reducer (we might be able to get the code off somewhere)
+	Shooting based on button press
+	
+
+
+What is your plan for the second week?
+Create Asteroids
+	Sprite (at least 2x2 box)
+	Interaction with getting shot
+
+
+What is your plan for the third week?
+Player movement
+	Direction based on direction of second joystick
+
+
+What is your backup plan if things don’t work out as planned?
+Features are ordered in necessity, player movement will be removed if necessary
+
+
+Weekly Reports
+--------------
+<In this space, provide a report each week of what worked and what didn't, and what (if any) changes were made to your proposal)>
+
+Week 1: This week we have created the spaceship model and four basic directions (up, down, left, right). We also got a controller working. Following difficulty connecting an arduino joystick to the DE2 board, we decided to use a keyboard instead for controls, which if fully equipped to work with the four basic directions (up, down, left, right) as well as an option for diagonal directions (up-left, up-right, down-left and down-right) if time permits. For the weekend we plan on creating the asteroids and bullet sprites, as well as a general motion module which will enable the objects to move.
+Week 2: This week we redesign the drawing module so that we can actually control the spaceship to different directions more efficiently. Also we have worked on the clock for the systems (30Hz) and variable coordinate movement (moving an object by 1, 2, 3, or 4 in either N, S, E, or W directions)
+	Comming up in this weekend, we are going to work on bullet and the asteroid with the code we have
+Week 3: This week the ship is able to move in all direction and shoot the bullet in the direction the ship is facing. We have been also working on asteroids. Right now it is in the progress. We will continute to do asteroid and the hit checker on this weekend and next monday.
+Week 4 (presentation): We completed the hit_checker and the asteroids through extra time outside of labs (optional extra lab hours, makerspace usage). 
+
+References
+----------
+<In this space clearly indicate all external sources used in this project. If you used anyone else's code (from previous B58 projects or other sources) clearly indicate what you used and where you found it. Usage of any material not credited in this space will be considered plagiarism. It is absolutely OK and expected to update this section as you progress in the projected.
+
+Make sure to document what you added on top of the existing work, especially if you work with a previous project. What is it that YOU added?>
+We took the keyboard from Joe Armitage & co.'s code at https://github.com/armitag8/ASIC_Notepad--
+	All modules are included in our keyboard.v (ps2_rx, keyboard, key2ascii)
+	While ps2_rx and keyboard are directly copied, key2ascii was converted to only include our movement keys (W, A, S, D) and a stop key (Space). The code was accordingly changed to only include thse 5 keys.
+	
+We took the VGA_adapater from code provided through the class' labs. 
+
+
+Repo & Video
+------------
+<At the end of the project, provide links to your code repository and presentation video (and passwords if not public>
+Repository: https://github.com/WillySong/AsteroiDE2
+Video: https://drive.google.com/file/d/1fLmQOLxlJuiKwySYFW8fFtlr257aqgf5/view?usp=sharing
+
