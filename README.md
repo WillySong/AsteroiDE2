@@ -2,7 +2,7 @@
 An interpretation of the classic cabinet arcade game Asteroids. In Asteroids, the player controls a ship that starts in the middle of the screen. Around them are asteroids that move across the screen along a linear path. If the player collides with one of these asteroids, they lose their ship and the game. The player has the capability to turn their ship, move it around the screen, and for the ship to destroy asteroids.
 
 
-###### You will need:
+## You will need:
 - Altera DE2 Board with the USB Blaster and Power Cord
 - Keyboard with a ps2 connector
 - VGA display, preferably set to a 160x120 resolution
