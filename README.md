@@ -23,15 +23,15 @@ An interpretation of the classic cabinet arcade game Asteroids. In Asteroids, th
 6. Assure Switch 17 is up and have fun!
 
 ## Controls:
-SW[1] to SW[8] inclusive activate asteroids (1-8)
-WASD controls the ship's direction
-KEY[1] to KEY[4] fires the bullet (only one bullet on screen at a time!)
-SW[17] turns the screen on and off
+- SW[1] to SW[8] inclusive activate asteroids (1-8)
+- WASD controls the ship's direction
+- KEY[1] to KEY[4] fires the bullet (only one bullet on screen at a time!)
+- SW[17] turns the screen on and off
 
 ## Displays:
-The VGA Display shows the game
-The left-most two hex displays (HEX7 and HEX6) are how many times the ship has been hit by an asteroid
-The middle two hex displays (HEX5 and HEX4) are how many asteroids have been hit
-The right-most four hex displays (HEX3, HEX2, HEX1, and HEX0) are how long you've been alive (in seconds)
+- The VGA Display shows the game
+- The left-most two hex displays (HEX7 and HEX6) are how many times the ship has been hit by an asteroid
+- The middle two hex displays (HEX5 and HEX4) are how many asteroids have been hit
+- The right-most four hex displays (HEX3, HEX2, HEX1, and HEX0) are how long you've been alive (in seconds)
 
 ###### Have fun birdies~
