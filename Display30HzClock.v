@@ -140,3 +140,37 @@ module timer_display(dig0, dig1, dig2, dig3, game_state, clk);
 			dig0 <= dig0 + 1;
 	end 
 endmodule 
+
+module score_display(dig0, dig1, game_state, hit);
+	input hit;
+	input game_state;
+	output reg [3:0] dig0, dig1;		
+			
+	always@(posedge hit) begin
+		if (game_state == 1) begin
+			dig0 <= 0;
+			dig1 <= 0;
+		end
+		else if (dig0 == 4'd9 && dig1 != 4'd9) begin
+			dig0 <= 0;
+			dig1 <= dig1 + 1;
+		end
+		else if (dig1 == 4'd9 && dig0 == 4'd9) begin
+			dig0 <= 4'd0;
+			dig1 <= 4'd0;
+		end
+		else
+			dig0 <= dig0 + 1;
+	end 
+endmodule
+
+
+module game_over_hold(hold, game_state, clk);
+	input clk, game_state;
+	output reg hold;
+	
+	always@(*) begin
+		if(game_state) hold <= 1;
+		else if (clk == 1) hold <= 0;
+	end 
+endmodule 
